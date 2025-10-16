@@ -1,290 +1,516 @@
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <base target="_top">
-    <title>GBK Clan War Dashboard</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Poppins -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            font-family: 'Roboto', sans-serif;
-            background-color: #111827; /* Dark blue-gray background */
-            color: #d1d5db; /* Light gray text */
-            height: 100%;
-            display: flex;
-        }
+      /* Menggunakan font Poppins untuk seluruh halaman */
+      body {
+        font-family: 'Poppins', sans-serif;
+        background-color: #0f172a; /* slate-900 */
+        background-image: url('https://www.transparenttextures.com/patterns/cubes.png');
+      }
 
-        #sidebar {
-            width: 240px;
-            background-color: #1f2937; /* Slightly lighter dark for sidebar */
-            color: #e5e7eb;
-            padding: 20px;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-            border-right: 1px solid #374151;
-        }
-        #sidebar h1 {
-            font-family: 'Teko', sans-serif;
-            font-size: 2.2em;
-            text-align: center;
-            margin-bottom: 30px;
-            color: #f59e0b; /* Amber/gold accent */
-            letter-spacing: 1px;
-        }
-        #sidebar ul {
-            list-style-type: none;
-            padding: 0;
-        }
-        #sidebar ul li, .has-submenu > span {
-            padding: 15px 10px;
-            cursor: pointer;
-            border-radius: 8px;
-            transition: background-color 0.3s, color 0.3s;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-        #sidebar ul li:hover, #sidebar ul li.active, .has-submenu > span:hover, .has-submenu > span.active {
-            background-color: #374151;
-            color: #ffffff;
-        }
-        
-        /* Submenu styles */
-        .has-submenu > span {
-            display: block;
-        }
-        .submenu {
-            list-style-type: none;
-            padding-left: 20px;
-            margin-top: 5px;
-            background-color: rgba(17, 24, 39, 0.5);
-            border-radius: 5px;
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease-out;
-        }
-        .submenu.open {
-            max-height: 200px;
-        }
-        .submenu li {
-            font-size: 0.9em;
-            padding: 10px;
-        }
+      /* Custom scrollbar untuk tampilan yang lebih menarik */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1e293b; /* slate-800 */
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #06b6d4; /* cyan-500 */
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #0891b2; /* cyan-600 */
+      }
+      
+      /* Styling untuk tab navigasi utama */
+      .tab-link {
+        transition: all 0.3s ease;
+        border-bottom: 2px solid transparent;
+      }
+      .tab-link.active {
+        color: #06b6d4; /* cyan-500 */
+        border-bottom-color: #06b6d4;
+        background-color: rgba(6, 182, 212, 0.1);
+      }
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
 
-        #main-content {
-            flex-grow: 1;
-            padding: 20px;
-            overflow-y: auto;
-            height: 100vh;
-            box-sizing: border-box;
-        }
-        
-        #content {
-            padding: 20px;
-            border-radius: 8px;
-            min-height: 80%;
-        }
+      /* Efek glassmorphism untuk card */
+      .card {
+        background: rgba(30, 41, 59, 0.6); /* slate-800 with opacity */
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(6, 182, 212, 0.3);
+        border-radius: 0.75rem;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+      }
 
-        #loader {
-            text-align: center;
-            padding: 50px;
-            font-size: 1.5em;
-            font-family: 'Teko', sans-serif;
-            color: #f59e0b;
-        }
-
-        h2 {
-            font-family: 'Teko', sans-serif;
-            color: #e5e7eb;
-            font-size: 2.8em;
-            letter-spacing: 1px;
-            border-bottom: 2px solid #f59e0b;
-            padding-bottom: 10px;
-            margin-top: 0;
-        }
-
-        /* Dashboard Card Styles */
-        .dashboard-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 25px;
-        }
-        .clan-card {
-            background-color: #1f2937;
-            border: 1px solid #374151;
-            border-radius: 8px;
-            padding: 25px;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
-            transition: transform 0.2s;
-        }
-        .clan-card:hover {
-            transform: translateY(-5px);
-        }
-        .clan-card h3, .clan-card h4 {
-            font-family: 'Teko', sans-serif;
-            margin: 0;
-        }
-        .clan-card h3 {
-            color: #f59e0b;
-            font-size: 2.2em;
-            margin-bottom: 15px;
-        }
-        .clan-card h4 {
-            color: #9ca3af;
-            font-size: 1.5em;
-            margin-top: 20px;
-            border-left: 3px solid #f59e0b;
-            padding-left: 10px;
-        }
-        .clan-card p {
-            color: #d1d5db;
-            margin: 8px 0;
-            font-size: 0.95em;
-        }
-        
-        /* Table Styles */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            background-color: #1f2937;
-            color: #e5e7eb;
-            border: 1px solid #374151;
-            font-size: 0.95em;
-        }
-        th, td {
-            border: 1px solid #374151;
-            padding: 12px 10px;
-            text-align: left;
-        }
-        th {
-            background-color: #374151;
-            color: #f59e0b;
-            font-family: 'Teko', sans-serif;
-            font-size: 1.3em;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
-        tr:nth-child(even) {
-            background-color: #374151;
-        }
-        tr:hover {
-            background-color: #4b5563;
-        }
+      /* Styling untuk sub-tab navigasi klan */
+      .sub-tab-link {
+          padding: 0.5rem 1.5rem;
+          border-radius: 9999px;
+          font-weight: 600;
+          transition: all 0.3s ease;
+          background-color: #1e293b; /* slate-800 */
+          color: #94a3b8; /* slate-400 */
+          border: 2px solid transparent;
+          cursor: pointer;
+      }
+      .sub-tab-link:hover {
+          background-color: #334155; /* slate-700 */
+          color: #e2e8f0; /* slate-200 */
+      }
+      .sub-tab-link.active {
+          background-color: #06b6d4; /* cyan-500 */
+          color: #0f172a; /* slate-900 */
+          border-color: #0891b2; /* cyan-600 */
+          box-shadow: 0 0 15px rgba(6, 182, 212, 0.5);
+      }
+      .sub-tab-content {
+          display: none;
+      }
+      .sub-tab-content.active {
+          display: block;
+          animation: fadeIn 0.5s ease-in-out;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
     </style>
-</head>
-<body>
-    <div id="sidebar">
-        <h1>GBK Management</h1>
-        <ul>
-            <li onclick="loadPage('dashboard', this)" class="active">Dashboard</li>
-            <li class="has-submenu">
-                <span onclick="toggleSubMenu(this)">Anggota &#9662;</span>
-                <ul class="submenu">
-                    <li onclick="loadPage('anggota-squad', this)">GBK Squad</li>
-                    <li onclick="loadPage('anggota-crew', this)">GBK Crew</li>
-                </ul>
-            </li>
-            <li class="has-submenu">
-                <span onclick="toggleSubMenu(this)">Partisipasi &#9662;</span>
-                <ul class="submenu">
-                    <li onclick="loadPage('partisipasi-squad', this)">GBK Squad</li>
-                    <li onclick="loadPage('partisipasi-crew', this)">GBK Crew</li>
-                </ul>
-            </li>
-            <li onclick="loadPage('perang-aktif', this)">Perang Aktif</li>
-            <li class="has-submenu">
-                <span onclick="toggleSubMenu(this)">Log Perang &#9662;</span>
-                <ul class="submenu">
-                    <li onclick="loadPage('log-perang-squad', this)">GBK Squad</li>
-                    <li onclick="loadPage('log-perang-crew', this)">GBK Crew</li>
-                </ul>
-            </li>
-            <li class="has-submenu">
-                <span onclick="toggleSubMenu(this)">CWL &#9662;</span>
-                <ul class="submenu">
-                    <li onclick="loadPage('cwl-squad', this)">GBK Squad</li>
-                    <li onclick="loadPage('cwl-crew', this)">GBK Crew</li>
-                </ul>
-            </li>
-            <li onclick="loadPage('raid', this)">Raid Weekend</li>
+  </head>
+  <body class="text-slate-200">
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+      <!-- Header Utama -->
+      <header class="text-center mb-8">
+        <h1 class="text-4xl sm:text-5xl font-bold text-white tracking-wider uppercase">
+          <span class="text-cyan-400">GBK</span> Management System
+        </h1>
+        <p class="text-slate-400 mt-2">Dashboard Manajer Klan Clash of Clans</p>
+      </header>
+
+      <!-- Navigasi Tab Utama -->
+      <nav class="mb-8">
+        <ul class="flex flex-wrap justify-center border-b border-slate-700">
+          <li><a href="#dashboard" class="tab-link active py-3 px-5 inline-block font-semibold">Dashboard</a></li>
+          <li><a href="#anggota" class="tab-link py-3 px-5 inline-block font-semibold">Anggota</a></li>
+          <li><a href="#partisipasi" class="tab-link py-3 px-5 inline-block font-semibold">Partisipasi</a></li>
+          <li><a href="#perang_aktif" class="tab-link py-3 px-5 inline-block font-semibold">Perang Aktif</a></li>
+          <li><a href="#log_perang" class="tab-link py-3 px-5 inline-block font-semibold">Log Perang</a></li>
         </ul>
-    </div>
+      </nav>
 
-    <div id="main-content">
-        <div id="content">
-            <!-- Konten akan dimuat di sini -->
+      <!-- Konten Tab -->
+      <main>
+        <!-- Tab: Dashboard -->
+        <div id="dashboard" class="tab-content active">
+          <!-- ... Konten Dashboard tidak berubah ... -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Kolom GBK Crew -->
+            <div class="flex flex-col gap-6">
+              <div class="card p-6">
+                <h2 class="text-2xl font-bold text-cyan-400 mb-4"><?= data.dashboard[2][0] ?></h2>
+                <div class="grid grid-cols-2 gap-4 text-center">
+                  <div class="bg-slate-900 p-4 rounded-lg">
+                    <p class="text-sm text-slate-400"><?= data.dashboard[5][0] ?></p>
+                    <p class="text-lg font-semibold text-green-400"><?= data.dashboard[6][0] ?> Pemain</p>
+                  </div>
+                  <div class="bg-slate-900 p-4 rounded-lg">
+                    <p class="text-sm text-slate-400"><?= data.dashboard[5][1] ?></p>
+                    <p class="text-lg font-semibold text-red-400"><?= data.dashboard[6][1] ?> Pemain</p>
+                  </div>
+                  <div class="bg-slate-900 p-4 rounded-lg">
+                    <p class="text-sm text-slate-400"><?= data.dashboard[5][2] ?></p>
+                    <p class="text-lg font-semibold text-white truncate"><?= data.dashboard[6][2] ?></p>
+                  </div>
+                  <div class="bg-slate-900 p-4 rounded-lg">
+                    <p class="text-sm text-slate-400"><?= data.dashboard[5][3] ?></p>
+                    <p class="text-lg font-semibold text-white truncate"><?= data.dashboard[6][3] ?></p>
+                  </div>
+                </div>
+              </div>
+              <div class="card p-6">
+                <h3 class="text-xl font-bold text-white mb-4"><?= data.dashboard[8][0] ?></h3>
+                <div class="space-y-2 text-slate-300">
+                  <p><strong>Status:</strong> <span class="font-semibold text-cyan-400"><?= data.dashboard[10][0] ?></span></p>
+                  <p><strong>Sisa Serangan:</strong> <span class="font-semibold text-white"><?= data.dashboard[10][1] ?></span></p>
+                  <p><strong>Bintang Kita vs Lawan:</strong> <span class="font-semibold text-green-400"><?= data.dashboard[10][2] ?></span> vs <span class="font-semibold text-red-400"><?= data.dashboard[10][3] ?></span></p>
+                </div>
+              </div>
+              <div class="card p-6">
+                <h3 class="text-xl font-bold text-white mb-4"><?= data.dashboard[12][0] ?></h3>
+                <div class="overflow-x-auto max-h-96">
+                  <table class="w-full text-sm">
+                    <thead class="text-xs text-cyan-400 uppercase bg-slate-800 sticky top-0">
+                      <tr>
+                        <th class="py-2 px-3 text-left"><?= data.dashboard[13][0] ?></th>
+                        <th class="py-2 px-3 text-left"><?= data.dashboard[13][2] ?></th>
+                        <th class="py-2 px-3 text-left"><?= data.dashboard[13][3] ?></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <? for (var i = 14; i < data.dashboard.length; i++) { ?>
+                        <? if (!data.dashboard[i] || !data.dashboard[i][0]) break; ?>
+                        <tr class="border-b border-slate-700">
+                          <td class="py-2 px-3"><?= data.dashboard[i][0] ?></td>
+                          <td class="py-2 px-3 font-mono"><?= data.dashboard[i][2] ?></td>
+                          <td class="py-2 px-3"><?= (data.dashboard[i][3] * 100).toFixed(1) + '%' ?></td>
+                        </tr>
+                      <? } ?>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <!-- Kolom GBK Squad -->
+            <div class="flex flex-col gap-6">
+              <div class="card p-6">
+                <h2 class="text-2xl font-bold text-cyan-400 mb-4"><?= data.dashboard[2][5] ?></h2>
+                 <div class="grid grid-cols-2 gap-4 text-center">
+                  <div class="bg-slate-900 p-4 rounded-lg">
+                    <p class="text-sm text-slate-400"><?= data.dashboard[5][5] ?></p>
+                    <p class="text-lg font-semibold text-green-400"><?= data.dashboard[6][5] ?> Pemain</p>
+                  </div>
+                  <div class="bg-slate-900 p-4 rounded-lg">
+                    <p class="text-sm text-slate-400"><?= data.dashboard[5][6] ?></p>
+                    <p class="text-lg font-semibold text-red-400"><?= data.dashboard[6][6] ?> Pemain</p>
+                  </div>
+                  <div class="bg-slate-900 p-4 rounded-lg">
+                    <p class="text-sm text-slate-400"><?= data.dashboard[5][7] ?></p>
+                    <p class="text-lg font-semibold text-white truncate"><?= data.dashboard[6][7] ?></p>
+                  </div>
+                  <div class="bg-slate-900 p-4 rounded-lg">
+                    <p class="text-sm text-slate-400"><?= data.dashboard[5][8] ?></p>
+                    <p class="text-lg font-semibold text-white truncate"><?= data.dashboard[6][8] ?></p>
+                  </div>
+                </div>
+              </div>
+              <div class="card p-6">
+                <h3 class="text-xl font-bold text-white mb-4"><?= data.dashboard[8][5] ?></h3>
+                <div class="space-y-2 text-slate-300">
+                  <p><strong>Status:</strong> <span class="font-semibold text-cyan-400"><?= data.dashboard[10][5] ?></span></p>
+                  <p><strong>Sisa Serangan:</strong> <span class="font-semibold text-white"><?= data.dashboard[10][6] ?></span></p>
+                  <p><strong>Bintang Kita vs Lawan:</strong> <span class="font-semibold text-green-400"><?= data.dashboard[10][7] ?></span> vs <span class="font-semibold text-red-400"><?= data.dashboard[10][8] ?></span></p>
+                </div>
+              </div>
+               <div class="card p-6">
+                <h3 class="text-xl font-bold text-white mb-4"><?= data.dashboard[12][5] ?></h3>
+                <div class="overflow-x-auto max-h-96">
+                  <table class="w-full text-sm">
+                    <thead class="text-xs text-cyan-400 uppercase bg-slate-800 sticky top-0">
+                      <tr>
+                        <th class="py-2 px-3 text-left"><?= data.dashboard[13][5] ?></th>
+                        <th class="py-2 px-3 text-left"><?= data.dashboard[13][7] ?></th>
+                        <th class="py-2 px-3 text-left"><?= data.dashboard[13][8] ?></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <? for (var i = 14; i < data.dashboard.length; i++) { ?>
+                        <? if (!data.dashboard[i] || !data.dashboard[i][5]) break; ?>
+                        <tr class="border-b border-slate-700">
+                          <td class="py-2 px-3"><?= data.dashboard[i][5] ?></td>
+                          <td class="py-2 px-3 font-mono"><?= data.dashboard[i][7] ?></td>
+                          <td class="py-2 px-3"><?= (data.dashboard[i][8] * 100).toFixed(1) + '%' ?></td>
+                        </tr>
+                      <? } ?>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <!-- Tab: Anggota -->
+        <div id="anggota" class="tab-content">
+          <div class="mb-6 flex justify-center gap-4">
+            <button class="sub-tab-link active" data-target="anggota-crew">🛡️ GBK Crew</button>
+            <button class="sub-tab-link" data-target="anggota-squad">🔥 GBK Squad</button>
+          </div>
+          <div id="anggota-crew" class="sub-tab-content active">
+            <div class="card p-4 sm:p-6">
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                  <thead class="text-xs text-cyan-400 uppercase bg-slate-900">
+                    <tr>
+                      <? if (data.anggota.gbkCrew.length > 0) { ?>
+                        <? for (var j = 0; j < data.anggota.gbkCrew[0].length; j++) { ?>
+                          <th scope="col" class="py-3 px-6"><?= data.anggota.gbkCrew[0][j] ?></th>
+                        <? } ?>
+                      <? } ?>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <? for (var i = 1; i < data.anggota.gbkCrew.length; i++) { ?>
+                      <tr class="border-b border-slate-700 hover:bg-slate-700/50">
+                        <? for (var j = 0; j < data.anggota.gbkCrew[i].length; j++) { ?>
+                          <td class="py-4 px-6"><?= data.anggota.gbkCrew[i][j] ?></td>
+                        <? } ?>
+                      </tr>
+                    <? } ?>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div id="anggota-squad" class="sub-tab-content">
+            <div class="card p-4 sm:p-6">
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                  <thead class="text-xs text-cyan-400 uppercase bg-slate-900">
+                    <tr>
+                      <? if (data.anggota.gbkSquad.length > 0) { ?>
+                        <? for (var j = 0; j < data.anggota.gbkSquad[0].length; j++) { ?>
+                          <th scope="col" class="py-3 px-6"><?= data.anggota.gbkSquad[0][j] ?></th>
+                        <? } ?>
+                      <? } ?>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <? for (var i = 1; i < data.anggota.gbkSquad.length; i++) { ?>
+                      <tr class="border-b border-slate-700 hover:bg-slate-700/50">
+                        <? for (var j = 0; j < data.anggota.gbkSquad[i].length; j++) { ?>
+                          <td class="py-4 px-6"><?= data.anggota.gbkSquad[i][j] ?></td>
+                        <? } ?>
+                      </tr>
+                    <? } ?>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Partisipasi -->
+        <div id="partisipasi" class="tab-content">
+           <div class="mb-6 flex justify-center gap-4">
+            <button class="sub-tab-link active" data-target="partisipasi-crew">🛡️ GBK Crew</button>
+            <button class="sub-tab-link" data-target="partisipasi-squad">🔥 GBK Squad</button>
+          </div>
+          <div id="partisipasi-crew" class="sub-tab-content active">
+            <div class="card p-4 sm:p-6">
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                  <thead class="text-xs text-cyan-400 uppercase bg-slate-900">
+                    <tr>
+                      <? if (data.partisipasi.gbkCrew.length > 0) { ?>
+                        <? for (var j = 0; j < data.partisipasi.gbkCrew[0].length; j++) { ?>
+                          <th scope="col" class="py-3 px-6"><?= data.partisipasi.gbkCrew[0][j] ?></th>
+                        <? } ?>
+                      <? } ?>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <? for (var i = 1; i < data.partisipasi.gbkCrew.length; i++) { ?>
+                      <tr class="border-b border-slate-700 hover:bg-slate-700/50">
+                        <? for (var j = 0; j < data.partisipasi.gbkCrew[i].length; j++) { ?>
+                          <td class="py-4 px-6"><?= data.partisipasi.gbkCrew[i][j] ?></td>
+                        <? } ?>
+                      </tr>
+                    <? } ?>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div id="partisipasi-squad" class="sub-tab-content">
+            <div class="card p-4 sm:p-6">
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                  <thead class="text-xs text-cyan-400 uppercase bg-slate-900">
+                    <tr>
+                      <? if (data.partisipasi.gbkSquad.length > 0) { ?>
+                        <? for (var j = 0; j < data.partisipasi.gbkSquad[0].length; j++) { ?>
+                          <th scope="col" class="py-3 px-6"><?= data.partisipasi.gbkSquad[0][j] ?></th>
+                        <? } ?>
+                      <? } ?>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <? for (var i = 1; i < data.partisipasi.gbkSquad.length; i++) { ?>
+                      <tr class="border-b border-slate-700 hover:bg-slate-700/50">
+                        <? for (var j = 0; j < data.partisipasi.gbkSquad[i].length; j++) { ?>
+                          <td class="py-4 px-6"><?= data.partisipasi.gbkSquad[i][j] ?></td>
+                        <? } ?>
+                      </tr>
+                    <? } ?>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Tab: Perang Aktif -->
+        <div id="perang_aktif" class="tab-content">
+           <div class="card p-4 sm:p-6">
+              <h2 class="text-xl font-bold text-cyan-400 mb-4"><?= data.perang_aktif[0][0] ?></h2>
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                   <thead class="text-xs text-cyan-400 uppercase bg-slate-900">
+                    <tr>
+                      <? for (var j = 0; j < data.perang_aktif[1].length; j++) { ?>
+                        <th scope="col" class="py-3 px-6"><?= data.perang_aktif[1][j] ?></th>
+                      <? } ?>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <? for (var i = 2; i < data.perang_aktif.length; i++) { ?>
+                      <? if(data.perang_aktif[i][0] && data.perang_aktif[i][0].includes('vs')) { ?>
+                        <tr class="bg-slate-900">
+                           <td colspan="<?= data.perang_aktif[1].length ?>" class="py-3 px-6 font-bold text-cyan-400 text-lg"><?= data.perang_aktif[i][0] ?></td>
+                        </tr>
+                        <? i++; // Lewati baris header untuk tabel berikutnya ?>
+                      <? } else { ?>
+                         <tr class="border-b border-slate-700 hover:bg-slate-700/50">
+                           <? for (var j = 0; j < data.perang_aktif[i].length; j++) { ?>
+                             <td class="py-4 px-6"><?= data.perang_aktif[i][j] ?></td>
+                          <? } ?>
+                         </tr>
+                       <? } ?>
+                    <? } ?>
+                  </tbody>
+                </table>
+              </div>
+           </div>
+        </div>
+
+        <!-- Tab: Log Perang -->
+        <div id="log_perang" class="tab-content">
+           <div class="mb-6 flex justify-center gap-4">
+            <button class="sub-tab-link active" data-target="log_perang-crew">🛡️ GBK Crew</button>
+            <button class="sub-tab-link" data-target="log_perang-squad">🔥 GBK Squad</button>
+          </div>
+          <div id="log_perang-crew" class="sub-tab-content active">
+            <div class="card p-4 sm:p-6">
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                  <thead class="text-xs text-cyan-400 uppercase bg-slate-900">
+                    <tr>
+                      <? if (data.log_perang.gbkCrew.length > 0) { ?>
+                        <? for (var j = 0; j < data.log_perang.gbkCrew[0].length; j++) { ?>
+                          <th scope="col" class="py-3 px-6"><?= data.log_perang.gbkCrew[0][j] ?></th>
+                        <? } ?>
+                      <? } ?>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <? for (var i = 1; i < data.log_perang.gbkCrew.length; i++) { ?>
+                      <tr class="border-b border-slate-700 hover:bg-slate-700/50">
+                        <? for (var j = 0; j < data.log_perang.gbkCrew[i].length; j++) { ?>
+                          <td class="py-4 px-6">
+                            <? if (j === 3) { // Kolom Hasil ?>
+                              <span class="font-bold uppercase <?= data.log_perang.gbkCrew[i][j] === 'win' ? 'text-green-400' : (data.log_perang.gbkCrew[i][j] === 'lose' ? 'text-red-400' : 'text-yellow-400') ?>">
+                                <?= data.log_perang.gbkCrew[i][j] ?>
+                              </span>
+                            <? } else { ?>
+                              <?= data.log_perang.gbkCrew[i][j] ?>
+                            <? } ?>
+                          </td>
+                        <? } ?>
+                      </tr>
+                    <? } ?>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div id="log_perang-squad" class="sub-tab-content">
+            <div class="card p-4 sm:p-6">
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                  <thead class="text-xs text-cyan-400 uppercase bg-slate-900">
+                    <tr>
+                      <? if (data.log_perang.gbkSquad.length > 0) { ?>
+                        <? for (var j = 0; j < data.log_perang.gbkSquad[0].length; j++) { ?>
+                          <th scope="col" class="py-3 px-6"><?= data.log_perang.gbkSquad[0][j] ?></th>
+                        <? } ?>
+                      <? } ?>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <? for (var i = 1; i < data.log_perang.gbkSquad.length; i++) { ?>
+                      <tr class="border-b border-slate-700 hover:bg-slate-700/50">
+                        <? for (var j = 0; j < data.log_perang.gbkSquad[i].length; j++) { ?>
+                           <td class="py-4 px-6">
+                            <? if (j === 3) { // Kolom Hasil ?>
+                              <span class="font-bold uppercase <?= data.log_perang.gbkSquad[i][j] === 'win' ? 'text-green-400' : (data.log_perang.gbkSquad[i][j] === 'lose' ? 'text-red-400' : 'text-yellow-400') ?>">
+                                <?= data.log_perang.gbkSquad[i][j] ?>
+                              </span>
+                            <? } else { ?>
+                              <?= data.log_perang.gbkSquad[i][j] ?>
+                            <? } ?>
+                          </td>
+                        <? } ?>
+                      </tr>
+                    <? } ?>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+      </main>
     </div>
 
+    <!-- JavaScript untuk fungsionalitas Tab -->
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            loadPage('dashboard', document.querySelector('#sidebar ul li'));
+      document.addEventListener('DOMContentLoaded', function() {
+        // Logika untuk Tab Utama
+        const tabLinks = document.querySelectorAll('.tab-link');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabLinks.forEach(link => {
+          link.addEventListener('click', function(e) {
+            e.preventDefault();
+            tabLinks.forEach(l => l.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            const targetId = this.getAttribute('href').substring(1);
+            document.getElementById(targetId).classList.add('active');
+          });
         });
 
-        function toggleSubMenu(element) {
-            document.querySelectorAll('.submenu.open').forEach(function(openSubmenu) {
-                if (openSubmenu !== element.nextElementSibling) {
-                    openSubmenu.classList.remove('open');
-                }
+        // Logika untuk Sub-Tab (pemilihan klan)
+        function setupSubTabs(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const subTabLinks = container.querySelectorAll('.sub-tab-link');
+            const subTabContents = container.querySelectorAll('.sub-tab-content');
+
+            subTabLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    subTabLinks.forEach(l => l.classList.remove('active'));
+                    subTabContents.forEach(c => c.classList.remove('active'));
+                    this.classList.add('active');
+                    const targetId = this.dataset.target;
+                    container.querySelector('#' + targetId).classList.add('active');
+                });
             });
-            const subMenu = element.nextElementSibling;
-            if (subMenu) {
-                subMenu.classList.toggle('open');
-            }
         }
 
-        function loadPage(page, element) {
-            // Stop propagation if a submenu item is clicked
-            if (event) {
-              event.stopPropagation();
-            }
-
-            document.getElementById('content').innerHTML = '<div id="loader">MEMUAT DATA...</div>';
-            
-            // Handle active menu item styling
-            document.querySelectorAll('#sidebar ul li, #sidebar ul li span').forEach(function(item) {
-                item.classList.remove('active');
-            });
-
-            element.classList.add('active');
-            if (element.parentElement.classList.contains('submenu')) {
-                element.parentElement.previousElementSibling.classList.add('active');
-            }
-
-            var functionToCall;
-            switch(page) {
-                case 'dashboard': functionToCall = 'getClanInfo'; break;
-                case 'anggota-squad': functionToCall = 'getClanMembersSquad'; break;
-                case 'anggota-crew': functionToCall = 'getClanMembersCrew'; break;
-                case 'partisipasi-squad': functionToCall = 'getParticipationDataSquad'; break;
-                case 'partisipasi-crew': functionToCall = 'getParticipationDataCrew'; break;
-                case 'perang-aktif': functionToCall = 'getCurrentWar'; break;
-                case 'log-perang-squad': functionToCall = 'getWarLogSquad'; break;
-                case 'log-perang-crew': functionToCall = 'getWarLogCrew'; break;
-                case 'cwl-squad': functionToCall = 'getClanCWLSquad'; break;
-                case 'cwl-crew': functionToCall = 'getClanCWLCrew'; break;
-                case 'raid': functionToCall = 'getClanRaid'; break;
-                default: console.error("Page not found: " + page); return;
-            }
-            
-            google.script.run
-                .withSuccessHandler(function(html) {
-                    document.getElementById('content').innerHTML = html;
-                })
-                .withFailureHandler(function(error) {
-                    document.getElementById('content').innerHTML = '<p>Gagal memuat data: ' + error.message + '</p>';
-                })
-                [functionToCall]();
-        }
+        // Inisialisasi sub-tab untuk setiap halaman yang relevan
+        setupSubTabs('anggota');
+        setupSubTabs('partisipasi');
+        setupSubTabs('log_perang');
+      });
     </script>
-</body>
+  </body>
 </html>
 
