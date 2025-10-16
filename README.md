@@ -26,6 +26,14 @@ Tujuannya tetap sama: mengotomatisasi pengumpulan data, membuat laporan perang y
 
 ---
 
+## 🔗 Akses Dasbor Spreadsheet
+
+Anda dapat melihat contoh *live* dari dasbor yang dihasilkan oleh sistem ini melalui tautan Google Sheets di bawah ini. (Akses hanya lihat).
+
+- **[Buka Dasbor Google Sheets](https://docs.google.com/spreadsheets/d/1HBP_elghNzpeEg343DDg-OOi_53mpNrJEzgHus1HTzM/edit?usp=sharing)**
+
+---
+
 ## 📂 Struktur File (Arsitektur Modular)
 
 Proyek ini dipecah menjadi beberapa file `.js`/`.gs` yang masing-masing memiliki tanggung jawab spesifik:
