@@ -1,415 +1,290 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GBK Management System</title>
-  <!-- Tailwind CSS & Alpine.js -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="//unpkg.com/alpinejs" defer></script>
-  <!-- Google Fonts: Poppins -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  
-  <!-- Kustomisasi Style untuk Gaming UI -->
-  <style>
-    :root {
-      --bg-primary: #121212;
-      --bg-secondary: #1e1e1e;
-      --border-color: #333333;
-      --text-primary: #e0e0e0;
-      --text-secondary: #a0a0a0;
-      --accent-cyan: #00ffff;
-      --accent-cyan-dark: #00cccc;
-    }
-    body {
-      font-family: 'Poppins', sans-serif;
-      background-color: var(--bg-primary);
-      color: var(--text-primary);
-    }
-    .sidebar-link, .submenu-link {
-      transition: all 0.2s ease-in-out;
-      border-left: 3px solid transparent;
-    }
-    .sidebar-link:hover, .submenu-link:hover {
-      background-color: rgba(0, 255, 255, 0.1);
-      border-left-color: var(--accent-cyan-dark);
-      color: var(--accent-cyan);
-    }
-    .sidebar-link.active, .submenu-link.active {
-      background-color: rgba(0, 255, 255, 0.15);
-      border-left-color: var(--accent-cyan);
-      color: var(--accent-cyan);
-      font-weight: 600;
-    }
-    .card {
-      background-color: var(--bg-secondary);
-      border: 1px solid var(--border-color);
-      border-radius: 0.75rem;
-      box-shadow: 0 0 15px rgba(0, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-    }
-    .table-header {
-      background-color: #2a2a2a;
-      border-bottom: 2px solid var(--accent-cyan);
-    }
-    .status-badge {
-      padding: 0.25rem 0.75rem; border-radius: 9999px;
-      font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
-    }
-    .status-win { background-color: #008080; color: white; box-shadow: 0 0 5px #00ffff; }
-    .status-lose { background-color: #8B0000; color: white; box-shadow: 0 0 5px #ff0000; }
-    .status-tie { background-color: #B8860B; color: white; box-shadow: 0 0 5px #ffd700; }
-    
-    /* Scrollbar Styling */
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: var(--bg-primary); }
-    ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--accent-cyan-dark); }
-
-    /* Loader Animation */
-    .loader {
-      width: 50px; aspect-ratio: 1; border-radius: 50%;
-      border: 8px solid var(--border-color);
-      border-right-color: var(--accent-cyan);
-      animation: l2 1s infinite linear;
-    }
-    @keyframes l2 {to{transform: rotate(1turn)}}
-    
-    .text-glow {
-      text-shadow: 0 0 8px var(--accent-cyan), 0 0 10px var(--accent-cyan);
-    }
-  </style>
-</head>
-<body class="min-h-screen flex">
-
-  <!-- Sidebar -->
-  <aside class="w-64 bg-black/50 backdrop-blur-sm text-gray-200 p-4 flex-shrink-0 border-r border-gray-700 flex flex-col">
-    <div class="flex items-center mb-8">
-      <img src="https://api.iconify.design/game-icons:two-handed-sword.svg?color=%2300ffff" alt="Clan Logo" class="h-10 w-10 mr-3">
-      <h1 class="text-xl font-bold text-white text-glow">GBK System</h1>
-    </div>
-    <nav id="sidebar-nav" class="flex flex-col space-y-1">
-      <a href="#" onclick="loadPage('dashboard', this)" class="sidebar-link flex items-center p-3 rounded-lg">
-        <i data-lucide="layout-dashboard" class="mr-3 h-5 w-5"></i> Dashboard
-      </a>
-      <a href="#" onclick="loadPage('anggota', this)" class="sidebar-link flex items-center p-3 rounded-lg">
-        <i data-lucide="users" class="mr-3 h-5 w-5"></i> Anggota
-      </a>
-      <a href="#" onclick="loadPage('partisipasi', this)" class="sidebar-link flex items-center p-3 rounded-lg">
-        <i data-lucide="user-check" class="mr-3 h-5 w-5"></i> Partisipasi
-      </a>
-      <a href="#" onclick="loadPage('perangAktif', this)" class="sidebar-link flex items-center p-3 rounded-lg">
-        <i data-lucide="swords" class="mr-3 h-5 w-5"></i> Perang Aktif
-      </a>
-      <a href="#" onclick="loadPage('raidTerbaru', this)" class="sidebar-link flex items-center p-3 rounded-lg">
-        <i data-lucide="axe" class="mr-3 h-5 w-5"></i> Raid Terbaru
-      </a>
-
-      <!-- Submenu CWL -->
-      <div x-data="{ open: false }">
-        <button @click="open = !open" class="sidebar-link w-full flex items-center p-3 rounded-lg justify-between">
-          <span class="flex items-center"><i data-lucide="shield" class="mr-3 h-5 w-5"></i> CWL</span>
-          <i data-lucide="chevron-down" class="h-5 w-5 transition-transform" :class="{'rotate-180': open}"></i>
-        </button>
-        <div x-show="open" x-transition class="pl-6 pt-1 space-y-1">
-          <a href="#" onclick="loadPage('cwlCrew', this)" class="submenu-link flex items-center p-2 rounded-lg text-sm">GBK Crew</a>
-          <a href="#" onclick="loadPage('cwlSquad', this)" class="submenu-link flex items-center p-2 rounded-lg text-sm">GBK Squad</a>
-        </div>
-      </div>
-
-      <!-- Submenu Log Perang -->
-      <div x-data="{ open: false }">
-        <button @click="open = !open" class="sidebar-link w-full flex items-center p-3 rounded-lg justify-between">
-          <span class="flex items-center"><i data-lucide="scroll-text" class="mr-3 h-5 w-5"></i> Log Perang</span>
-          <i data-lucide="chevron-down" class="h-5 w-5 transition-transform" :class="{'rotate-180': open}"></i>
-        </button>
-        <div x-show="open" x-transition class="pl-6 pt-1 space-y-1">
-          <a href="#" onclick="loadPage('logPerangCrew', this)" class="submenu-link flex items-center p-2 rounded-lg text-sm">GBK Crew</a>
-          <a href="#" onclick="loadPage('logPerangSquad', this)" class="submenu-link flex items-center p-2 rounded-lg text-sm">GBK Squad</a>
-        </div>
-      </div>
-    </nav>
-    <div class="mt-auto text-center text-xs text-gray-500">
-      <p>GBK Management System</p>
-      <p>&copy; 2025</p>
-    </div>
-  </aside>
-
-  <!-- Main Content -->
-  <main class="flex-1 p-6 lg:p-8 overflow-y-auto">
-    <div id="loader" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 items-center justify-center">
-        <div class="loader"></div>
-    </div>
-    <div id="content-area">
-      <!-- Konten dinamis akan dimuat di sini -->
-    </div>
-  </main>
-
-  <script>
-    lucide.createIcons();
-
-    const loader = document.getElementById('loader');
-    const showLoader = () => loader.style.display = 'flex';
-    const hideLoader = () => loader.style.display = 'none';
-
-    function handleFailure(error) {
-      console.error(error);
-      hideLoader();
-      document.getElementById('content-area').innerHTML = `<div class="card p-8 text-center"><h2 class="text-2xl font-bold text-red-400">Terjadi Kesalahan</h2><p class="mt-2 text-gray-400">Gagal memuat data. Error: ${error.message}</p></div>`;
-    }
-
-    function setActiveLink(element) {
-        document.querySelectorAll('#sidebar-nav .sidebar-link, #sidebar-nav .submenu-link').forEach(link => link.classList.remove('active'));
-        if (element) {
-            element.classList.add('active');
-            const parentButton = element.closest('div[x-data]')?.querySelector('button');
-            if(parentButton) parentButton.classList.add('active');
+    <base target="_top">
+    <title>GBK Clan War Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: #111827; /* Dark blue-gray background */
+            color: #d1d5db; /* Light gray text */
+            height: 100%;
+            display: flex;
         }
-    }
 
-    function loadPage(page, element) {
-      setActiveLink(element);
-      const contentArea = document.getElementById('content-area');
-      contentArea.innerHTML = '';
-      showLoader();
-      
-      switch(page) {
-        case 'dashboard': google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(handleFailure).getDashboardData(); break;
-        case 'anggota': google.script.run.withSuccessHandler(renderAnggota).withFailureHandler(handleFailure).getDataAnggota(); break;
-        case 'partisipasi': google.script.run.withSuccessHandler(renderPartisipasi).withFailureHandler(handleFailure).getDataPartisipasi(); break;
-        case 'perangAktif': google.script.run.withSuccessHandler(renderPerangAktif).withFailureHandler(handleFailure).getDataPerangAktif(); break;
-        case 'raidTerbaru': google.script.run.withSuccessHandler(renderRaidTerbaru).withFailureHandler(handleFailure).getDataRaidTerbaru(); break;
-        case 'cwlCrew': google.script.run.withSuccessHandler(data => renderCWLPage(data.crew, 'GBK Crew')).withFailureHandler(handleFailure).getDataCWL(); break;
-        case 'cwlSquad': google.script.run.withSuccessHandler(data => renderCWLPage(data.squad, 'GBK Squad')).withFailureHandler(handleFailure).getDataCWL(); break;
-        case 'logPerangCrew': google.script.run.withSuccessHandler(data => renderLogPerangPage(data.crew, 'GBK Crew')).withFailureHandler(handleFailure).getDataLogPerang(); break;
-        case 'logPerangSquad': google.script.run.withSuccessHandler(data => renderLogPerangPage(data.squad, 'GBK Squad')).withFailureHandler(handleFailure).getDataLogPerang(); break;
-        default: contentArea.innerHTML = `<h2>Halaman tidak ditemukan</h2>`; hideLoader();
-      }
-    }
+        #sidebar {
+            width: 240px;
+            background-color: #1f2937; /* Slightly lighter dark for sidebar */
+            color: #e5e7eb;
+            padding: 20px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            border-right: 1px solid #374151;
+        }
+        #sidebar h1 {
+            font-family: 'Teko', sans-serif;
+            font-size: 2.2em;
+            text-align: center;
+            margin-bottom: 30px;
+            color: #f59e0b; /* Amber/gold accent */
+            letter-spacing: 1px;
+        }
+        #sidebar ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        #sidebar ul li, .has-submenu > span {
+            padding: 15px 10px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background-color 0.3s, color 0.3s;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        #sidebar ul li:hover, #sidebar ul li.active, .has-submenu > span:hover, .has-submenu > span.active {
+            background-color: #374151;
+            color: #ffffff;
+        }
+        
+        /* Submenu styles */
+        .has-submenu > span {
+            display: block;
+        }
+        .submenu {
+            list-style-type: none;
+            padding-left: 20px;
+            margin-top: 5px;
+            background-color: rgba(17, 24, 39, 0.5);
+            border-radius: 5px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .submenu.open {
+            max-height: 200px;
+        }
+        .submenu li {
+            font-size: 0.9em;
+            padding: 10px;
+        }
 
-    // ================== RENDER FUNCTIONS ==================
+        #main-content {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        
+        #content {
+            padding: 20px;
+            border-radius: 8px;
+            min-height: 80%;
+        }
 
-    function renderDashboard(data) {
-        if (data.error) { handleFailure({ message: data.error }); return; }
+        #loader {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.5em;
+            font-family: 'Teko', sans-serif;
+            color: #f59e0b;
+        }
 
-        const statCard = (icon, label, value, color) => `
-            <div class="bg-black/30 p-4 rounded-lg flex items-center space-x-3">
-                <i data-lucide="${icon}" class="h-8 w-8 ${color}"></i>
-                <div>
-                    <p class="text-sm text-gray-400">${label}</p>
-                    <p class="font-bold text-lg truncate">${value}</p>
-                </div>
-            </div>
-        `;
+        h2 {
+            font-family: 'Teko', sans-serif;
+            color: #e5e7eb;
+            font-size: 2.8em;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #f59e0b;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
 
-        const renderClanCard = (clan) => `
-            <div class="card p-5 space-y-5">
-                <div class="text-center">
-                    <h2 class="text-3xl font-bold text-glow">${clan.nama}</h2>
-                    <p class="text-sm text-gray-400 font-mono">${clan.tag}</p>
-                </div>
-                
-                <div class="bg-black/20 p-4 rounded-lg space-y-3">
-                    <h3 class="font-semibold text-lg text-center mb-2">Status Perang</h3>
-                    <div class="flex justify-around items-center text-center">
-                        <div class="text-green-400"><p class="text-3xl font-bold">${clan.warStatus.bintangKita}</p><p class="text-xs">BINTANG KITA</p></div>
-                        <div class="text-gray-400 text-2xl font-bold">VS</div>
-                        <div class="text-red-400"><p class="text-3xl font-bold">${clan.warStatus.bintangLawan}</p><p class="text-xs">BINTANG LAWAN</p></div>
-                    </div>
-                    <p class="text-center text-xs text-gray-500">${clan.warStatus.sisaSerangan} Serangan Tersisa | Status: ${clan.warStatus.status}</p>
-                </div>
+        /* Dashboard Card Styles */
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+        }
+        .clan-card {
+            background-color: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            transition: transform 0.2s;
+        }
+        .clan-card:hover {
+            transform: translateY(-5px);
+        }
+        .clan-card h3, .clan-card h4 {
+            font-family: 'Teko', sans-serif;
+            margin: 0;
+        }
+        .clan-card h3 {
+            color: #f59e0b;
+            font-size: 2.2em;
+            margin-bottom: 15px;
+        }
+        .clan-card h4 {
+            color: #9ca3af;
+            font-size: 1.5em;
+            margin-top: 20px;
+            border-left: 3px solid #f59e0b;
+            padding-left: 10px;
+        }
+        .clan-card p {
+            color: #d1d5db;
+            margin: 8px 0;
+            font-size: 0.95em;
+        }
+        
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #1f2937;
+            color: #e5e7eb;
+            border: 1px solid #374151;
+            font-size: 0.95em;
+        }
+        th, td {
+            border: 1px solid #374151;
+            padding: 12px 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #374151;
+            color: #f59e0b;
+            font-family: 'Teko', sans-serif;
+            font-size: 1.3em;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        tr:nth-child(even) {
+            background-color: #374151;
+        }
+        tr:hover {
+            background-color: #4b5563;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <h1>GBK Management</h1>
+        <ul>
+            <li onclick="loadPage('dashboard', this)" class="active">Dashboard</li>
+            <li class="has-submenu">
+                <span onclick="toggleSubMenu(this)">Anggota &#9662;</span>
+                <ul class="submenu">
+                    <li onclick="loadPage('anggota-squad', this)">GBK Squad</li>
+                    <li onclick="loadPage('anggota-crew', this)">GBK Crew</li>
+                </ul>
+            </li>
+            <li class="has-submenu">
+                <span onclick="toggleSubMenu(this)">Partisipasi &#9662;</span>
+                <ul class="submenu">
+                    <li onclick="loadPage('partisipasi-squad', this)">GBK Squad</li>
+                    <li onclick="loadPage('partisipasi-crew', this)">GBK Crew</li>
+                </ul>
+            </li>
+            <li onclick="loadPage('perang-aktif', this)">Perang Aktif</li>
+            <li class="has-submenu">
+                <span onclick="toggleSubMenu(this)">Log Perang &#9662;</span>
+                <ul class="submenu">
+                    <li onclick="loadPage('log-perang-squad', this)">GBK Squad</li>
+                    <li onclick="loadPage('log-perang-crew', this)">GBK Crew</li>
+                </ul>
+            </li>
+            <li class="has-submenu">
+                <span onclick="toggleSubMenu(this)">CWL &#9662;</span>
+                <ul class="submenu">
+                    <li onclick="loadPage('cwl-squad', this)">GBK Squad</li>
+                    <li onclick="loadPage('cwl-crew', this)">GBK Crew</li>
+                </ul>
+            </li>
+            <li onclick="loadPage('raid', this)">Raid Weekend</li>
+        </ul>
+    </div>
 
-                <div>
-                    <h3 class="font-semibold text-lg mb-3">Performa Anggota</h3>
-                    <div class="grid grid-cols-2 gap-3">
-                        ${statCard('arrow-up-circle', 'Promosi', clan.performa.promosi, 'text-green-400')}
-                        ${statCard('arrow-down-circle', 'Demosi', clan.performa.demosi, 'text-red-400')}
-                        ${statCard('trophy', 'Top Raid', clan.performa.raidLooter, 'text-yellow-400')}
-                        ${statCard('gem', 'Top Donasi', clan.performa.topDonator, 'text-blue-400')}
-                    </div>
-                </div>
+    <div id="main-content">
+        <div id="content">
+            <!-- Konten akan dimuat di sini -->
+        </div>
+    </div>
 
-                <div>
-                    <h3 class="font-semibold text-lg mb-2">Top CWL Terakhir</h3>
-                    <ul class="text-sm space-y-1.5">${clan.cwlTerakhir.map(p => `
-                        <li class="flex justify-between bg-black/20 p-2 rounded">
-                            <span class="truncate">${p[0]}</span>
-                            <span class="font-bold text-cyan-400">${p[2]}⭐ / ${p[3]*100}%</span>
-                        </li>`).join('')}
-                    </ul>
-                </div>
-            </div>`;
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            loadPage('dashboard', document.querySelector('#sidebar ul li'));
+        });
 
-        document.getElementById('content-area').innerHTML = `
-            <div class="text-center mb-8">
-                <h1 class="text-5xl font-extrabold text-white text-glow">GBK Management System</h1>
-                <p class="text-gray-400">Selamat datang di pusat komando Klan GBK.</p>
-            </div>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                ${renderClanCard(data.crew)}
-                ${renderClanCard(data.squad)}
-            </div>
-        `;
-        lucide.createIcons();
-        hideLoader();
-    }
-    
-    function createTable(headers, dataRows, title) {
-        return `
-            <h1 class="text-4xl font-bold mb-6 text-white text-glow">${title}</h1>
-            <div class="card overflow-x-auto">
-              <table class="w-full text-sm text-left">
-                <thead class="text-xs text-gray-200 uppercase table-header">
-                  <tr>${headers.map(h => `<th scope="col" class="px-6 py-3">${h}</th>`).join('')}</tr>
-                </thead>
-                <tbody>${dataRows.join('')}</tbody>
-              </table>
-            </div>`;
-    }
-
-    function renderAnggota(data) {
-      const headers = ["Klan", "Nama", "Role", "TH", "Donasi", "Diterima", "XP", "League", "Poin War", "Trophy"];
-      const rows = data.map(row => `
-        <tr class="border-b border-gray-700 hover:bg-gray-800">
-          <td class="px-6 py-4">${row[1]}</td>
-          <td class="px-6 py-4 font-medium text-cyan-400">${row[3]}</td>
-          <td class="px-6 py-4">${row[4]}</td><td class="px-6 py-4 text-center">${row[5]}</td>
-          <td class="px-6 py-4 text-green-400">${row[6]}</td><td class="px-6 py-4 text-red-400">${row[7]}</td>
-          <td class="px-6 py-4">${row[8]}</td><td class="px-6 py-4">${row[9] || 'N/A'}</td>
-          <td class="px-6 py-4">${row[10]}</td><td class="px-6 py-4">${row[11]}</td>
-        </tr>`);
-      document.getElementById('content-area').innerHTML = createTable(headers, rows, 'Daftar Anggota Klan');
-      hideLoader();
-    }
-
-    function renderPartisipasi(data) {
-        const headers = ["Pemain", "Klan", "TH", "Role", "CWL", "War", "Gagal CWL", "Gagal War", "Status"];
-        const getStatusBadge = (status) => {
-          if (status.includes('Aman')) return `<span class="status-badge" style="background-color:#2E8B57; color:white;">Aman</span>`;
-          if (status.includes('Pelanggaran')) return `<span class="status-badge" style="background-color:#DC143C; color:white;">Pelanggaran</span>`;
-          return `<span class="status-badge" style="background-color:#4682B4; color:white;">${status}</span>`;
-        };
-        const rows = data.map(row => `
-            <tr class="border-b border-gray-700 hover:bg-gray-800">
-                <td class="px-6 py-4 font-medium text-cyan-400">${row[0]}</td><td class="px-6 py-4">${row[4]}</td>
-                <td class="px-6 py-4 text-center">${row[1]}</td><td class="px-6 py-4">${row[2]}</td>
-                <td class="px-6 py-4 text-green-400">${row[6]}</td><td class="px-6 py-4 text-green-400">${row[7]}</td>
-                <td class="px-6 py-4 text-red-400">${row[8]}</td><td class="px-6 py-4 text-red-400">${row[9]}</td>
-                <td class="px-6 py-4">${getStatusBadge(row[10])}</td>
-            </tr>`);
-        document.getElementById('content-area').innerHTML = createTable(headers, rows, 'Partisipasi Anggota');
-        hideLoader();
-    }
-    
-    function renderPerangAktif(data) {
-        const renderWarTable = (warData) => {
-            if (!warData || warData.length < 2) return '<div class="card p-4"><p class="text-gray-400">Tidak ada data perang aktif untuk klan ini.</p></div>';
-            
-            const header = warData[0][0];
-            const members = warData.slice(2);
-
-            return `<div class="card overflow-hidden">
-                <h2 class="text-xl font-bold p-4 text-center bg-black/30">${header}</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-px bg-gray-700">
-                    <div class="bg-gray-800 p-2"><h3 class="text-lg font-semibold p-3 text-center text-cyan-400">⚔️ TIM KITA ⚔️</h3>${members.map(row => `<div class="flex justify-between items-center p-2 border-t border-gray-700 text-xs"><span>${row[1]} (TH${row[2]})</span><span class="${row[3].includes('✔️') ? 'text-green-400' : 'text-gray-500'}">${row[3]}</span></div>`).join('')}</div>
-                    <div class="bg-gray-800 p-2"><h3 class="text-lg font-semibold p-3 text-center text-red-400">🔥 TIM MUSUH 🔥</h3>${members.map(row => `<div class="flex justify-between items-center p-2 border-t border-gray-700 text-xs"><span>${row[9]} (TH${row[10]})</span><span class="${row[11].includes('✔️') ? 'text-green-400' : 'text-gray-500'}">${row[11]}</span></div>`).join('')}</div>
-                </div></div>`;
-        };
-
-        document.getElementById('content-area').innerHTML = `
-            <h1 class="text-4xl font-bold mb-6 text-white text-glow">Perang Aktif</h1>
-            <div class="space-y-8">
-                <div><h2 class="text-3xl font-semibold mb-4 text-cyan-400">GBK Crew</h2>${renderWarTable(data.crew)}</div>
-                <div><h2 class="text-3xl font-semibold mb-4 text-cyan-400">GBK Squad</h2>${renderWarTable(data.squad)}</div>
-            </div>`;
-        hideLoader();
-    }
-
-    function renderRaidTerbaru(data) {
-        const renderRaidTable = (raidData, clanName) => {
-            if (!raidData || raidData.length === 0) return '<div class="card p-4"><p class="text-gray-400">Tidak ada data raid untuk klan ini.</p></div>';
-            const headers = ["Peringkat", "Nama Pemain", "Total Jarahan", "Jml Serangan", "Rata-rata"];
-            const rows = raidData.map(row => `
-                <tr class="border-b border-gray-700 hover:bg-gray-800">
-                  <td class="px-6 py-4 text-center">${row[0]}</td>
-                  <td class="px-6 py-4 font-medium text-cyan-400">${row[1]}</td>
-                  <td class="px-6 py-4 text-yellow-400">${parseInt(row[3]).toLocaleString('id-ID')}</td>
-                  <td class="px-6 py-4 text-center">${row[4]}</td>
-                  <td class="px-6 py-4">${parseInt(row[5]).toLocaleString('id-ID')}</td>
-                </tr>`).join('');
-            return createTable(headers, [rows], `Performa Raid: ${clanName}`);
-        };
-
-        document.getElementById('content-area').innerHTML = `
-            <div class="space-y-8">
-                ${renderRaidTable(data.crew, "GBK Crew")}
-                ${renderRaidTable(data.squad, "GBK Squad")}
-            </div>`;
-        hideLoader();
-    }
-    
-    function renderCWLPage(clanData, clanName) {
-        const parseCwlData = (cwlData) => {
-            if (!cwlData || cwlData.length === 0) return [];
-            const wars = []; let currentWar = null;
-            cwlData.forEach(row => {
-                if (row[0] && row[0].toLowerCase().startsWith('hari ke-')) {
-                    if (currentWar) wars.push(currentWar);
-                    currentWar = { title: row[0], attacks: [] };
-                } else if (currentWar && row[0] && row[0].startsWith('#')) {
-                    currentWar.attacks.push(row);
+        function toggleSubMenu(element) {
+            document.querySelectorAll('.submenu.open').forEach(function(openSubmenu) {
+                if (openSubmenu !== element.nextElementSibling) {
+                    openSubmenu.classList.remove('open');
                 }
             });
-            if (currentWar) wars.push(currentWar);
-            return wars;
-        };
-
-        const renderWarCard = (war) => `<div class="card">
-            <h3 class="text-lg font-semibold p-3 text-center bg-black/30 rounded-t-lg">${war.title}</h3>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-px bg-gray-700 p-2">${war.attacks.map(attack => `
-                <div class="bg-gray-800 p-2 rounded flex items-center justify-between text-xs">
-                   <div class="flex-1 text-left"><p class="font-bold truncate">${attack[1]}</p><p class="text-gray-400">vs ${attack[9] || 'N/A'}</p></div>
-                   <div class="text-right ${attack[3] === '✔️' ? 'text-green-400' : 'text-gray-500'}">${attack[3] === '✔️' ? `${attack[5]}⭐ ${attack[6]}%` : 'No Attack'}</div>
-                </div>`).join('')}
-            </div></div>`;
-
-        const wars = parseCwlData(clanData);
-        let content = `<h1 class="text-4xl font-bold mb-6 text-white text-glow">CWL: ${clanName}</h1>`;
-        if (wars.length === 0) {
-            content += '<div class="card p-4"><p class="text-gray-400">Tidak ada data CWL untuk klan ini.</p></div>';
-        } else {
-            content += `<div class="space-y-6">${wars.map(renderWarCard).join('')}</div>`;
+            const subMenu = element.nextElementSibling;
+            if (subMenu) {
+                subMenu.classList.toggle('open');
+            }
         }
-        document.getElementById('content-area').innerHTML = content;
-        hideLoader();
-    }
 
-    function renderLogPerangPage(data, clanName) {
-        const headers = ["Tanggal", "Hasil", "Skor", "Lawan", "Ukuran"];
-        const getResultBadge = (result) => {
-            result = result.toLowerCase();
-            if (result === 'win') return `<span class="status-badge status-win">Win</span>`;
-            if (result === 'lose') return `<span class="status-badge status-lose">Lose</span>`;
-            return `<span class="status-badge status-tie">Tie</span>`;
-        };
-        const rows = data.map(row => `
-            <tr class="border-b border-gray-700 hover:bg-gray-800">
-                <td class="px-6 py-4 whitespace-nowrap">${new Date(row[10]).toLocaleDateString('id-ID', { year:'numeric', month: 'short', day:'numeric' })}</td>
-                <td class="px-6 py-4">${getResultBadge(row[3])}</td>
-                <td class="px-6 py-4"><span class="text-green-400">${row[5]}⭐</span> vs <span class="text-red-400">${row[7]}⭐</span></td>
-                <td class="px-6 py-4">${row[9]}</td>
-                <td class="px-6 py-4 text-center">${row[4]}v${row[4]}</td>
-            </tr>`);
-        document.getElementById('content-area').innerHTML = createTable(headers, rows, `Arsip Log Perang: ${clanName}`);
-        hideLoader();
-    }
+        function loadPage(page, element) {
+            // Stop propagation if a submenu item is clicked
+            if (event) {
+              event.stopPropagation();
+            }
 
-    window.onload = () => loadPage('dashboard', document.querySelector('#sidebar-nav .sidebar-link'));
-  </script>
+            document.getElementById('content').innerHTML = '<div id="loader">MEMUAT DATA...</div>';
+            
+            // Handle active menu item styling
+            document.querySelectorAll('#sidebar ul li, #sidebar ul li span').forEach(function(item) {
+                item.classList.remove('active');
+            });
+
+            element.classList.add('active');
+            if (element.parentElement.classList.contains('submenu')) {
+                element.parentElement.previousElementSibling.classList.add('active');
+            }
+
+            var functionToCall;
+            switch(page) {
+                case 'dashboard': functionToCall = 'getClanInfo'; break;
+                case 'anggota-squad': functionToCall = 'getClanMembersSquad'; break;
+                case 'anggota-crew': functionToCall = 'getClanMembersCrew'; break;
+                case 'partisipasi-squad': functionToCall = 'getParticipationDataSquad'; break;
+                case 'partisipasi-crew': functionToCall = 'getParticipationDataCrew'; break;
+                case 'perang-aktif': functionToCall = 'getCurrentWar'; break;
+                case 'log-perang-squad': functionToCall = 'getWarLogSquad'; break;
+                case 'log-perang-crew': functionToCall = 'getWarLogCrew'; break;
+                case 'cwl-squad': functionToCall = 'getClanCWLSquad'; break;
+                case 'cwl-crew': functionToCall = 'getClanCWLCrew'; break;
+                case 'raid': functionToCall = 'getClanRaid'; break;
+                default: console.error("Page not found: " + page); return;
+            }
+            
+            google.script.run
+                .withSuccessHandler(function(html) {
+                    document.getElementById('content').innerHTML = html;
+                })
+                .withFailureHandler(function(error) {
+                    document.getElementById('content').innerHTML = '<p>Gagal memuat data: ' + error.message + '</p>';
+                })
+                [functionToCall]();
+        }
+    </script>
 </body>
 </html>
 
