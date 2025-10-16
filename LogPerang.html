@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <?!= include('Style'); ?>
+</head>
+<body class="flex">
+  <?!= include('Sidebar'); ?>
+
+  <!-- Konten Utama dengan margin kiri -->
+  <main class="ml-64 flex-1 p-8 overflow-y-auto">
+    <header class="mb-8">
+      <h1 class="font-title text-5xl font-bold text-white">Arsip Log Perang</h1>
+      <p class="text-lg text-gray-400">Riwayat pertempuran klan yang telah usai.</p>
+    </header>
+    
+    <div id="loading-container" class="flex justify-center items-center py-16">
+      <div class="loader"></div>
+    </div>
+
+    <div id="table-container" class="hidden card p-4 overflow-hidden">
+       <div class="overflow-auto max-h-[75vh]">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Tanggal</th>
+              <th>Klan</th>
+              <th>Lawan</th>
+              <th>Hasil</th>
+              <th>Skor</th>
+            </tr>
+          </thead>
+          <tbody id="logperang-tbody">
+            <!-- Data akan diisi oleh JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      google.script.run
+        .withSuccessHandler(populateTable)
+        .withFailureHandler(showError)
+        .getLogPerangData();
+    });
+
+    function populateTable(data) {
+      const tableBody = document.getElementById('log-table-body');
+      let html = '';
+      data.forEach(war => {
+        let hasilClass = '';
+        if (war.hasil.toLowerCase() === 'win') hasilClass = 'status-win';
+        if (war.hasil.toLowerCase() === 'lose') hasilClass = 'status-lose';
+        if (war.hasil.toLowerCase() === 'tie') hasilClass = 'status-tie';
+        
+        html += `<tr>
+          <td>${war.tanggal}</td>
+          <td>${war.namaKlan}</td>
+          <td class="${hasilClass}">${war.hasil.toUpperCase()}</td>
+          <td><b>${war.bintangKita}⭐</b> (${war.persenKita})</td>
+          <td>${war.namaLawan}</td>
+          <td><b>${war.bintangLawan}⭐</b> (${war.persenLawan})</td>
+        </tr>`;
+      });
+      tableBody.innerHTML = html;
+      document.getElementById('loading-container').style.display = 'none';
+      document.getElementById('content-container').classList.remove('hidden');
+    }
+
+    function showError(error) {
+      document.getElementById('loading-container').innerHTML = `<p class="text-red-400 font-bold">${error.message}</p>`;
+    }
+  </script>
+</body>
+</html>
+

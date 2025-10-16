@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <?!= include('Style'); ?>
+</head>
+<body class="flex">
+  
+  <?!= include('Sidebar'); ?>
+
+  <!-- Konten Utama dengan margin kiri untuk memberi ruang bagi sidebar -->
+  <main class="ml-64 flex-1 p-8 overflow-y-auto">
+    <header class="mb-8">
+      <h1 class="font-title text-5xl font-bold text-white">Dashboard Ringkasan</h1>
+      <p class="text-lg text-gray-400">Selamat datang di GBK Management System.</p>
+    </header>
+    
+    <div id="loading-container" class="flex justify-center items-center py-16">
+      <div class="loader"></div>
+    </div>
+
+    <div id="dashboard-content" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- Kolom GBK Crew -->
+      <div class="card p-6" id="crew-card">
+        <!-- Konten dinamis akan diisi oleh JavaScript -->
+      </div>
+      <!-- Kolom GBK Squad -->
+      <div class="card p-6" id="squad-card">
+        <!-- Konten dinamis akan diisi oleh JavaScript -->
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // ... (Script JavaScript di sini tetap sama seperti sebelumnya, tidak perlu diubah)
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      google.script.run
+        .withSuccessHandler(updateDashboard)
+        .withFailureHandler(showError)
+        .getDashboardData();
+    });
+
+    function updateDashboard(data) {
+      document.getElementById('loading-container').style.display = 'none';
+      document.getElementById('dashboard-content').classList.remove('hidden');
+
+      const crewCard = document.getElementById('crew-card');
+      const squadCard = document.getElementById('squad-card');
+      
+      // --- RENDER KONTEN GBK CREW ---
+      const crewData = data.crew;
+      crewCard.innerHTML = `
+        <h2 class="text-2xl font-bold text-center border-b-2 border-yellow-400 pb-2 mb-4">🛡️ GBK Crew 🛡️</h2>
+        <div class="space-y-6">
+          <div>
+            <h3 class="text-xl font-semibold mb-3 text-yellow-300">📈 Ringkasan Performa</h3>
+            <div class="grid grid-cols-2 gap-4 text-center">
+                <div class="bg-gray-800 p-3 rounded-lg"><p class="text-sm text-gray-400">Promosi (✔️)</p><p class="text-2xl font-bold">${crewData.performance.promo}</p></div>
+                <div class="bg-gray-800 p-3 rounded-lg"><p class="text-sm text-gray-400">Demosi (❌)</p><p class="text-2xl font-bold">${crewData.performance.demote}</p></div>
+                <div class="bg-gray-800 p-3 rounded-lg col-span-2"><p class="text-sm text-gray-400">Top Raid Looter</p><p class="text-lg font-bold">${crewData.performance.raidLooter}</p></div>
+                <div class="bg-gray-800 p-3 rounded-lg col-span-2"><p class="text-sm text-gray-400">Top Donator</p><p class="text-lg font-bold">${crewData.performance.topDonator}</p></div>
+            </div>
+          </div>
+          <div>
+            <h3 class="text-xl font-semibold mb-3 text-yellow-300">⚔️ Status War Aktif</h3>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+              <p class="text-lg font-bold">${crewData.activeWar.status}</p>
+              <div class="flex justify-around mt-2">
+                  <div><p class="text-sm text-gray-400">Serangan</p><p>${crewData.activeWar.attacks}</p></div>
+                  <div><p class="text-sm text-gray-400">⭐ Kita</p><p>${crewData.activeWar.stars}</p></div>
+                  <div><p class="text-sm text-gray-400">⭐ Musuh</p><p>${crewData.activeWar.opponentStars}</p></div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h3 class="text-xl font-semibold mb-3 text-yellow-300">🌟 CWL Bulan Terakhir (Top Player)</h3>
+            <ul class="space-y-2">
+              ${crewData.cwlTop.map(p => `<li class="bg-gray-800 p-2 rounded flex justify-between"><span>${p.name}</span><span class="font-bold">${p.stars}⭐ (${p.percentage}%)</span></li>`).join('')}
+            </ul>
+          </div>
+        </div>`;
+
+      // --- RENDER KONTEN GBK SQUAD ---
+      const squadData = data.squad;
+      squadCard.innerHTML = `
+        <h2 class="text-2xl font-bold text-center border-b-2 border-yellow-400 pb-2 mb-4">🔥 GBK Squad 🔥</h2>
+        <div class="space-y-6">
+          <div>
+            <h3 class="text-xl font-semibold mb-3 text-yellow-300">📈 Ringkasan Performa</h3>
+            <div class="grid grid-cols-2 gap-4 text-center">
+                <div class="bg-gray-800 p-3 rounded-lg"><p class="text-sm text-gray-400">Promosi (✔️)</p><p class="text-2xl font-bold">${squadData.performance.promo}</p></div>
+                <div class="bg-gray-800 p-3 rounded-lg"><p class="text-sm text-gray-400">Demosi (❌)</p><p class="text-2xl font-bold">${squadData.performance.demote}</p></div>
+                <div class="bg-gray-800 p-3 rounded-lg col-span-2"><p class="text-sm text-gray-400">Top Raid Looter</p><p class="text-lg font-bold">${squadData.performance.raidLooter}</p></div>
+                <div class="bg-gray-800 p-3 rounded-lg col-span-2"><p class="text-sm text-gray-400">Top Donator</p><p class="text-lg font-bold">${squadData.performance.topDonator}</p></div>
+            </div>
+          </div>
+          <div>
+            <h3 class="text-xl font-semibold mb-3 text-yellow-300">⚔️ Status War Aktif</h3>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+              <p class="text-lg font-bold">${squadData.activeWar.status}</p>
+              <div class="flex justify-around mt-2">
+                  <div><p class="text-sm text-gray-400">Serangan</p><p>${squadData.activeWar.attacks}</p></div>
+                  <div><p class="text-sm text-gray-400">⭐ Kita</p><p>${squadData.activeWar.stars}</p></div>
+                  <div><p class="text-sm text-gray-400">⭐ Musuh</p><p>${squadData.activeWar.opponentStars}</p></div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h3 class="text-xl font-semibold mb-3 text-yellow-300">🌟 CWL Bulan Terakhir (Top Player)</h3>
+            <ul class="space-y-2">
+              ${squadData.cwlTop.map(p => `<li class="bg-gray-800 p-2 rounded flex justify-between"><span>${p.name}</span><span class="font-bold">${p.stars}⭐ (${p.percentage}%)</span></li>`).join('')}
+            </ul>
+          </div>
+        </div>`;
+    }
+
+    function showError(error) {
+      document.getElementById('loading-container').innerHTML = `<p class="text-red-400 font-bold">Gagal memuat data: ${error.message}</p>`;
+    }
+  </script>
+</body>
+</html>
+

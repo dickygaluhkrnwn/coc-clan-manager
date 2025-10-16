@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <?!= include('Style'); ?>
+</head>
+<body class="flex">
+  <?!= include('Sidebar'); ?>
+
+  <main class="ml-64 flex-1 p-8 overflow-y-auto">
+    <header class="mb-8">
+      <h1 class="font-title text-5xl font-bold text-white">Liga Perang Klan</h1>
+      <p class="text-lg text-gray-400">Papan pertempuran CWL saat ini.</p>
+    </header>
+
+    <div id="loading-container" class="flex justify-center items-center py-16">
+      <div class="loader"></div>
+    </div>
+    
+    <div id="content-container" class="hidden grid grid-cols-1 xl:grid-cols-2 gap-8">
+       <!-- Konten akan diisi oleh JavaScript -->
+    </div>
+    <div id="no-war-container" class="hidden">
+      <div class="card p-8 text-center">
+        <h2 class="text-2xl font-bold text-yellow-400">Tidak Ada Data CWL</h2>
+        <p class="text-gray-300 mt-2">Musim CWL mungkin belum dimulai atau data belum disinkronkan.</p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      google.script.run
+        .withSuccessHandler(renderCwl)
+        .withFailureHandler(showError)
+        .getCwlData();
+    });
+
+    function renderCwl(data) {
+      const container = document.getElementById('content-container');
+      let crewHtml = '<div class="space-y-8"> <h2 class="font-title text-3xl text-center text-white">🛡️ GBK Crew 🛡️</h2>';
+      let squadHtml = '<div class="space-y-8"> <h2 class="font-title text-3xl text-center text-white">🔥 GBK Squad 🔥</h2>';
+      let hasCwl = false;
+
+      if (data.crew && data.crew.length > 0) {
+        hasCwl = true;
+        data.crew.forEach(round => crewHtml += createRoundCard(round));
+      } else {
+        crewHtml += '<p class="text-center text-gray-400 card p-4">Tidak ada data CWL untuk Crew.</p>';
+      }
+
+      if (data.squad && data.squad.length > 0) {
+        hasCwl = true;
+        data.squad.forEach(round => squadHtml += createRoundCard(round));
+      } else {
+        squadHtml += '<p class="text-center text-gray-400 card p-4">Tidak ada data CWL untuk Squad.</p>';
+      }
+      
+      crewHtml += '</div>';
+      squadHtml += '</div>';
+      
+      document.getElementById('loading-container').style.display = 'none';
+
+      if(hasCwl) {
+        container.innerHTML = crewHtml + squadHtml;
+        container.classList.remove('hidden');
+      } else {
+        document.getElementById('no-war-container').classList.remove('hidden');
+      }
+    }
+
+    function createRoundCard(roundData) {
+      let ourTeamRows = roundData.ourTeam.map(p => `<tr><td>${p.name}</td><td class="text-center">${p.status}</td><td class="text-center">${p.stars || '-'}⭐</td></tr>`).join('');
+      let enemyTeamRows = roundData.enemyTeam.map(p => `<tr><td>${p.name}</td><td class="text-center">${p.status}</td><td class="text-center">${p.stars || '-'}⭐</td></tr>`).join('');
+
+      return `
+        <div class="card overflow-hidden">
+          <div class="card-header"><h3 class="font-title text-xl text-white">${roundData.title}</h3></div>
+          <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h4 class="text-lg font-bold text-center mb-2 text-indigo-300">Tim Kita</h4>
+              <div class="overflow-auto max-h-60"><table class="data-table"><thead><tr><th>Nama</th><th class="text-center">Status</th><th class="text-center">⭐</th></tr></thead><tbody>${ourTeamRows}</tbody></table></div>
+            </div>
+            <div>
+              <h4 class="text-lg font-bold text-center mb-2 text-rose-300">Tim Musuh</h4>
+              <div class="overflow-auto max-h-60"><table class="data-table"><thead><tr><th>Nama</th><th class="text-center">Status</th><th class="text-center">⭐</th></tr></thead><tbody>${enemyTeamRows}</tbody></table></div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function showError(error) {
+      document.getElementById('loading-container').innerHTML = `<p class="text-red-400 font-bold">${error.message}</p>`;
+    }
+  </script>
+</body>
+</html>

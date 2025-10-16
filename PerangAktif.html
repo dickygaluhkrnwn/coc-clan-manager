@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <?!= include('Style'); ?>
+</head>
+<body class="flex">
+  <?!= include('Sidebar'); ?>
+
+  <main class="ml-64 flex-1 p-8 overflow-y-auto">
+    <header class="mb-8">
+      <h1 class="font-title text-5xl font-bold text-white">Perang Aktif</h1>
+      <p class="text-lg text-gray-400">Papan pertempuran real-time klan.</p>
+    </header>
+
+    <div id="loading-container" class="flex justify-center items-center py-16">
+      <div class="loader"></div>
+    </div>
+    
+    <div id="content-container" class="hidden space-y-8">
+       <!-- Konten akan diisi oleh JavaScript -->
+    </div>
+    <div id="no-war-container" class="hidden">
+      <div class="card p-8 text-center">
+        <h2 class="text-2xl font-bold text-yellow-400">Tidak Ada Perang Aktif</h2>
+        <p class="text-gray-300 mt-2">Seluruh pasukan sedang beristirahat. Cek kembali nanti!</p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      google.script.run
+        .withSuccessHandler(renderWars)
+        .withFailureHandler(showError)
+        .getPerangAktifData();
+    });
+
+    function renderWars(data) {
+      const container = document.getElementById('content-container');
+      let contentHtml = '';
+      let hasActiveWar = false;
+
+      if (data.crew && data.crew.title) {
+        hasActiveWar = true;
+        contentHtml += createWarCard(data.crew, 'GBK Crew');
+      }
+      if (data.squad && data.squad.title) {
+        hasActiveWar = true;
+        contentHtml += createWarCard(data.squad, 'GBK Squad');
+      }
+      
+      document.getElementById('loading-container').style.display = 'none';
+      if(hasActiveWar) {
+        container.innerHTML = contentHtml;
+        container.classList.remove('hidden');
+      } else {
+        document.getElementById('no-war-container').classList.remove('hidden');
+      }
+    }
+
+    function createWarCard(warData, clanName) {
+      let ourTeamRows = warData.ourTeam.map(p => `<tr><td>${p.name}</td><td>${p.th}</td><td>${p.status}</td><td>${p.stars || '-'}⭐</td></tr>`).join('');
+      let enemyTeamRows = warData.enemyTeam.map(p => `<tr><td>${p.name}</td><td>${p.th}</td><td>${p.status}</td><td>${p.stars || '-'}⭐</td></tr>`).join('');
+
+      return `
+        <div class="card overflow-hidden">
+          <div class="card-header"><h2 class="font-title text-2xl text-white">${warData.title}</h2></div>
+          <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h3 class="text-xl font-bold text-center mb-2 text-indigo-300">Tim Kita</h3>
+              <div class="overflow-auto max-h-96"><table class="data-table"><thead><tr><th>Nama</th><th>TH</th><th>Status</th><th>⭐</th></tr></thead><tbody>${ourTeamRows}</tbody></table></div>
+            </div>
+            <div>
+              <h3 class="text-xl font-bold text-center mb-2 text-rose-300">Tim Musuh</h3>
+              <div class="overflow-auto max-h-96"><table class="data-table"><thead><tr><th>Nama</th><th>TH</th><th>Status</th><th>⭐</th></tr></thead><tbody>${enemyTeamRows}</tbody></table></div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function showError(error) {
+      document.getElementById('loading-container').innerHTML = `<p class="text-red-400 font-bold">${error.message}</p>`;
+    }
+  </script>
+</body>
+</html>

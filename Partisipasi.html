@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <?!= include('Style'); ?>
+</head>
+<body class="flex">
+  <?!= include('Sidebar'); ?>
+
+  <!-- Konten Utama dengan margin kiri -->
+  <main class="ml-64 flex-1 p-8 overflow-y-auto">
+    <header class="mb-8">
+      <h1 class="font-title text-5xl font-bold text-white">Laporan Partisipasi</h1>
+      <p class="text-lg text-gray-400">Monitor performa dan pelanggaran anggota.</p>
+    </header>
+    
+    <div id="loading-container" class="flex justify-center items-center py-16">
+      <div class="loader"></div>
+    </div>
+
+    <div id="table-container" class="hidden card p-4 overflow-hidden">
+       <div class="overflow-auto max-h-[75vh]">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Nama</th>
+              <th>Klan</th>
+              <th>Status</th>
+              <th>Keterangan</th>
+              <th>War Gagal</th>
+              <th>CWL Gagal</th>
+            </tr>
+          </thead>
+          <tbody id="partisipasi-tbody">
+            <!-- Data akan diisi oleh JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      google.script.run
+        .withSuccessHandler(populateTable)
+        .withFailureHandler(showError)
+        .getPartisipasiData();
+    });
+
+    function populateTable(data) {
+      const tableBody = document.getElementById('partisipasi-table-body');
+      let html = '';
+      data.forEach(p => {
+        const statusClass = p.status.includes('🟢') ? 'status-aman' : 'status-pelanggaran';
+        html += `<tr>
+          <td>${p.nama}</td>
+          <td>${p.namaKlan}</td>
+          <td>${p.th}</td>
+          <td>${p.role}</td>
+          <td class="${statusClass}">${p.status}</td>
+          <td>${p.keterangan}</td>
+        </tr>`;
+      });
+      tableBody.innerHTML = html;
+      document.getElementById('loading-container').style.display = 'none';
+      document.getElementById('content-container').classList.remove('hidden');
+    }
+
+    function showError(error) {
+      document.getElementById('loading-container').innerHTML = `<p class="text-red-400 font-bold">${error.message}</p>`;
+    }
+  </script>
+</body>
+</html>
+
