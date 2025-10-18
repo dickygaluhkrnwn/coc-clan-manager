@@ -1,50 +1,45 @@
-// SELURUH KODE LENGKAP - KodeUtama.gs (V6.0 - Integrasi LockService)
+// SELURUH KODE LENGKAP - KodeUtama.gs (V6.3 - Deteksi Role Otomatis)
 /**
  * =================================================================
  * KODEUTAMA.GS: Berisi Fungsi Utama (onOpen) dan Logika Arsip/Update Non-Laporan.
- * * PENGEMBANGAN: Menambahkan LockService pada fullDataRefresh untuk automasi yang aman.
+ * * PENGEMBANGAN V6.3: Mengimplementasikan deteksi perubahan role otomatis.
+ * Menghapus menu manual dan menambahkan fungsi inisialisasi snapshot.
  * =================================================================
  */
 
 function onOpen() {
-    // Fungsi ini membuat menu kustom di Google Sheets saat spreadsheet dibuka.
     const ui = SpreadsheetApp.getUi();
-    
-    // Menu utama
     const menu = ui.createMenu('⚔️ Sistem Klan');
 
-    // --- 1. Sub-Menu Aksi Cepat & Refresh ---
     const actionMenu = ui.createMenu('🔄 Sinkronisasi & Refresh');
-    actionMenu.addItem('🚀 Sinkronisasi Lengkap', 'fullDataRefresh'); // Semua data & laporan
-    actionMenu.addItem('👥 Update Anggota Saja', 'updateAllMembers'); // Hanya Anggota & Donasi
-    actionMenu.addItem('📊 Refresh Dashboard Saja', 'Laporan_buildDashboard'); // Membangun Dashboard berdasarkan data yang sudah ada
+    actionMenu.addItem('🚀 Sinkronisasi Lengkap', 'fullDataRefresh');
+    actionMenu.addItem('👥 Update Anggota Saja', 'updateAllMembers');
+    actionMenu.addItem('📊 Refresh Dashboard Saja', 'Laporan_buildDashboard');
     menu.addSubMenu(actionMenu);
-
     menu.addSeparator();
     
-    // --- 2. Sub-Menu Laporan & Analisis ---
     const reportsMenu = ui.createMenu('📋 Laporan & Analisis');
     reportsMenu.addItem('Status War Aktif', 'updateCurrentWar'); 
     reportsMenu.addItem('Raid Capital Terbaru', 'generateDetailedRaidReport');
     reportsMenu.addItem('Rekap CWL Musim Terakhir', 'rekapitulasiCWL'); 
     reportsMenu.addItem('Evaluasi Partisipasi', 'getParticipationReport');
     menu.addSubMenu(reportsMenu);
-
     menu.addSeparator();
 
-    // --- 3. Sub-Menu Administrasi (Arsip & Pengaturan) ---
     const adminMenu = ui.createMenu('⚙️ Administrasi Sistem');
-    
     const archiveMenu = ui.createMenu('🗄️ Arsipkan Laporan');
     archiveMenu.addItem('Arsipkan Laporan Raid', 'archiveRaidReport');
     archiveMenu.addItem('Arsipkan Rekap CWL', 'archiveCwlData');
     archiveMenu.addItem('Arsipkan Detail War Classic', 'archiveClassicWarData');
     adminMenu.addSubMenu(archiveMenu);
     
+    // --- MENU PENCATATAN MANUAL DIHAPUS ---
+    // --- DIGANTIKAN DENGAN MENU INISIALISASI ---
+    adminMenu.addSeparator();
+    adminMenu.addItem('🔧 Inisialisasi Snapshot Role (Jalankan Sekali)', 'initializeRoleSnapshot');
     adminMenu.addSeparator();
     
     adminMenu.addItem('🔑 Atur API & Webhook', 'setGlobalProperties');
-    // --- PERUBAHAN NAMA MENU ---
     adminMenu.addItem('⏰ Atur Automasi (Setiap 4 Jam)', 'setupAutomaticTriggers');
     menu.addSubMenu(adminMenu);
 
@@ -52,52 +47,106 @@ function onOpen() {
 }
 
 /**
- * Fungsi utama untuk melakukan sinkronisasi data non-War (hanya data anggota).
- * Log War dipindahkan ke updateCurrentWar() agar lebih logis.
- * --- PENGEMBANGAN: DITAMBAHKAN LOCKSERVICE UNTUK MENCEGAH EKSEKUSI GANDA ---
+ * Fungsi inisialisasi satu kali untuk mengisi sheet 'Snapshot Role'
+ * berdasarkan data saat ini di sheet 'Anggota'.
  */
-function fullDataRefresh() {
-    const lock = LockService.getScriptLock();
-    // Coba dapatkan lock selama 10 detik. Jika gagal, berarti ada proses lain yang berjalan.
-    if (!lock.tryLock(10000)) {
-        Logger.log('Proses sinkronisasi sedang berjalan. Eksekusi saat ini dilewati.');
-        return; // Hentikan eksekusi jika proses lain masih berjalan
-    }
-
+function initializeRoleSnapshot() {
+    const ui = SpreadsheetApp.getUi();
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    try {
-        ss.toast('Memulai sinkronisasi semua data klan...', '🚀 SINKRONISASI', -1);
-        
-        // 1. Ambil data dasar (Anggota)
-        updateAllMembers(true); // Kirim flag untuk menekan toast individu
-        
-        // 2. Ambil data Laporan (yang juga melakukan fetching API)
-        updateCurrentWar(); // Mencakup Log Perang dan Perang Aktif
-        generateDetailedRaidReport(); // Mencakup Raid Terbaru
-        
-        // 3. Bangun Laporan Agregasi (berdasarkan data yang baru di-fetch)
-        rekapitulasiCWL();
-        getParticipationReport();
-        
-        // 4. Update Dashboard (Fungsi buildDashboard akan dipanggil di sini setelah selesai)
-        Laporan_buildDashboard(); // Memanggil fungsi dari Laporan.gs
+    
+    const confirmation = ui.alert(
+        'Konfirmasi Inisialisasi',
+        'Tindakan ini akan menghapus data snapshot lama dan membuat yang baru berdasarkan sheet "Anggota" saat ini. Ini hanya perlu dijalankan sekali saat pertama kali setup. Lanjutkan?',
+        ui.ButtonSet.YES_NO
+    );
+    if (confirmation !== ui.Button.YES) return;
+    
+    ss.toast('Memulai inisialisasi snapshot role...', 'SETUP', -1);
 
-        ss.toast('✅ Sinkronisasi dan pembaruan laporan selesai!', 'SELESAI', 5);
-    } catch (e) {
-        Logger.log(`Error pada fullDataRefresh: ${e.message}`);
-        ss.toast(`Terjadi Error: ${e.message}`, '❌ GAGAL', 10);
-    } finally {
-        // --- PENTING: Selalu lepaskan lock setelah selesai ---
-        lock.releaseLock();
-        Logger.log('Lock sinkronisasi dilepaskan.');
+    const memberSheet = ss.getSheetByName(SHEET_NAMES.ANGGOTA);
+    const snapshotSheet = ss.getSheetByName('Snapshot Role');
+
+    if (!memberSheet || memberSheet.getLastRow() < 2) {
+        ui.alert('Error', 'Sheet "Anggota" kosong atau tidak ditemukan.');
+        return;
     }
+    if (!snapshotSheet) {
+        ui.alert('Error', 'Sheet "Snapshot Role" tidak ditemukan. Harap buat sheet tersebut terlebih dahulu.');
+        return;
+    }
+
+    // Ambil data Tag (Kolom C) dan Role (Kolom E)
+    const memberData = memberSheet.getRange(2, 3, memberSheet.getLastRow() - 1, 3).getValues();
+    const snapshotData = memberData.map(row => [row[0], row[2]]); // [Player Tag, Role]
+
+    snapshotSheet.clearContents(); // Hapus data lama
+    snapshotSheet.getRange(1, 1, 1, 2).setValues([['Player Tag', 'Role Terakhir']]); // Set header
+    if (snapshotData.length > 0) {
+        snapshotSheet.getRange(2, 1, snapshotData.length, 2).setValues(snapshotData);
+    }
+    
+    ss.toast('✅ Inisialisasi Snapshot Role selesai!', 'SUKSES', 5);
 }
 
 
 /**
- * Mengambil data anggota terbaru untuk semua klan dan menuliskannya ke sheet Anggota.
- * @param {boolean} [suppressToast=false] - Menekan notifikasi sukses jika dipanggil dari fungsi lain.
+ * Fungsi inti baru untuk mendeteksi dan mencatat perubahan role secara otomatis.
  */
+function _detectAndLogRoleChanges() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const memberSheet = ss.getSheetByName(SHEET_NAMES.ANGGOTA);
+    const snapshotSheet = ss.getSheetByName('Snapshot Role');
+    const logSheet = ss.getSheetByName('Log Perubahan Role');
+
+    if (!memberSheet || !snapshotSheet || !logSheet || snapshotSheet.getLastRow() < 2) {
+        Logger.log('Deteksi role dilewati: salah satu sheet prasyarat (Anggota, Snapshot, Log) tidak ada atau kosong.');
+        return;
+    }
+    
+    // 1. Buat Peta (Map) dari data saat ini dan snapshot untuk perbandingan cepat
+    const currentRoles = new Map();
+    memberSheet.getRange(2, 3, memberSheet.getLastRow() - 1, 3).getValues().forEach(row => {
+        // row[0] = Player Tag, row[1] = Player Name, row[2] = Role
+        if (row[0]) currentRoles.set(String(row[0]).trim().toUpperCase(), { name: row[1], role: row[2] });
+    });
+
+    const lastRoles = new Map();
+    snapshotSheet.getRange(2, 1, snapshotSheet.getLastRow() - 1, 2).getValues().forEach(row => {
+        if (row[0]) lastRoles.set(String(row[0]).trim().toUpperCase(), row[1]);
+    });
+
+    const changesToLog = [];
+    const newSnapshotData = [];
+
+    // 2. Bandingkan data saat ini dengan snapshot
+    currentRoles.forEach((playerData, playerTag) => {
+        const lastRole = lastRoles.get(playerTag);
+        const currentRole = playerData.role;
+
+        if (lastRole && lastRole !== currentRole) {
+            // Perubahan terdeteksi!
+            Logger.log(`Perubahan role terdeteksi untuk ${playerTag}: ${lastRole} -> ${currentRole}`);
+            changesToLog.push([new Date(), playerTag, playerData.name, lastRole, currentRole]);
+        }
+        newSnapshotData.push([playerTag, currentRole]);
+    });
+
+    // 3. Tulis perubahan ke Log dan perbarui Snapshot
+    if (changesToLog.length > 0) {
+        logSheet.getRange(logSheet.getLastRow() + 1, 1, changesToLog.length, 5).setValues(changesToLog);
+        ss.toast(`Perubahan role terdeteksi dan dicatat untuk ${changesToLog.length} pemain.`, 'LOG OTOMATIS', 10);
+    }
+
+    // 4. Perbarui snapshot dengan data terbaru secara keseluruhan
+    snapshotSheet.clearContents();
+    snapshotSheet.getRange(1, 1, 1, 2).setValues([['Player Tag', 'Role Terakhir']]);
+    if (newSnapshotData.length > 0) {
+        snapshotSheet.getRange(2, 1, newSnapshotData.length, 2).setValues(newSnapshotData);
+    }
+}
+
+
+// --- FUNGSI UPDATE ANGGOTA DIPERBARUI UNTUK MEMANGGIL DETEKTOR OTOMATIS ---
 function updateAllMembers(suppressToast = false) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_NAMES.ANGGOTA);
@@ -122,15 +171,40 @@ function updateAllMembers(suppressToast = false) {
     if (combinedData.length > 0) { sheet.getRange(2, 1, combinedData.length, headers.length).setValues(combinedData); }
     SpreadsheetFormatter.formatMemberSheet(sheet);
     
+    // --- PANGGILAN FUNGSI BARU DI SINI ---
+    // Setelah sheet anggota diperbarui, langsung deteksi dan catat perubahannya.
+    _detectAndLogRoleChanges();
+
     if (!suppressToast) {
         ss.toast('✅ Data anggota selesai diperbarui!', 'SELESAI', 5);
     }
 }
 
-/**
- * Mengambil log perang terbaru untuk semua klan dan menuliskannya ke sheet Log Perang.
- * Fungsi ini dipanggil dari updateCurrentWar().
- */
+
+// --- KODE LAINNYA TIDAK PERLU DIUBAH ---
+function fullDataRefresh() {
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+        Logger.log('Proses sinkronisasi sedang berjalan. Eksekusi saat ini dilewati.');
+        return;
+    }
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    try {
+        ss.toast('Memulai sinkronisasi semua data klan...', '🚀 SINKRONISASI', -1);
+        updateAllMembers(true); // Fungsi ini sekarang sudah termasuk deteksi role otomatis
+        updateCurrentWar();
+        generateDetailedRaidReport();
+        rekapitulasiCWL();
+        getParticipationReport();
+        Laporan_buildDashboard();
+        ss.toast('✅ Sinkronisasi dan pembaruan laporan selesai!', 'SELESAI', 5);
+    } catch (e) {
+        Logger.log(`Error pada fullDataRefresh: ${e.message}`);
+        ss.toast(`Terjadi Error: ${e.message}`, '❌ GAGAL', 10);
+    } finally {
+        lock.releaseLock();
+    }
+}
 function updateAllWarLogs() {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_NAMES.LOG_PERANG);
@@ -173,13 +247,6 @@ function updateAllWarLogs() {
     }
     SpreadsheetFormatter.formatWarLogSheet(sheet);
 }
-
-
-// ===================================
-// === FUNGSI ARSIP & PENGATURAN ===
-// (Tidak ada perubahan pada fungsi-fungsi di bawah ini)
-// ===================================
-
 function archiveRaidReport() {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const reportSheet = ss.getSheetByName(SHEET_NAMES.RAID_TERBARU);
@@ -229,8 +296,6 @@ function archiveRaidReport() {
         ss.deleteSheet(reportSheet);
     }
 }
-
-
 function archiveCwlData() {
     const ui = SpreadsheetApp.getUi();
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -314,8 +379,6 @@ function archiveCwlData() {
         ss.toast("Tidak ada data baru untuk diarsipkan.", "INFO", 10);
     }
 }
-
-
 function archiveClassicWarData() {
     const ui = SpreadsheetApp.getUi();
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -434,7 +497,6 @@ function archiveClassicWarData() {
         ss.deleteSheet(sourceSheet);
     }
 }
-
 function setGlobalProperties() {
     const ui = SpreadsheetApp.getUi();
     const apiKeyPrompt = ui.prompt('Atur Kunci API CoC', 'Masukkan API Key (JWT):', ui.ButtonSet.OK_CANCEL);
@@ -448,3 +510,4 @@ function setGlobalProperties() {
         ui.alert('URL Webhook berhasil disimpan.');
     }
 }
+
