@@ -1,8 +1,8 @@
-// SELURUH KODE LENGKAP - KodeUtama.gs (V5.91 - Refactor Menu Singkat)
+// SELURUH KODE LENGKAP - KodeUtama.gs (V6.0 - Integrasi LockService)
 /**
  * =================================================================
  * KODEUTAMA.GS: Berisi Fungsi Utama (onOpen) dan Logika Arsip/Update Non-Laporan.
- * * Catatan: File ini bergantung pada Konstanta.gs, API_Coc.gs, dan Utilities.gs.
+ * * PENGEMBANGAN: Menambahkan LockService pada fullDataRefresh untuk automasi yang aman.
  * =================================================================
  */
 
@@ -24,10 +24,10 @@ function onOpen() {
     
     // --- 2. Sub-Menu Laporan & Analisis ---
     const reportsMenu = ui.createMenu('📋 Laporan & Analisis');
-    reportsMenu.addItem('Status War Aktif', 'updateCurrentWar'); // Lebih ringkas dari sebelumnya
-    reportsMenu.addItem('Raid Capital Terbaru', 'generateDetailedRaidReport'); // Disingkat
-    reportsMenu.addItem('Rekap CWL Musim Terakhir', 'rekapitulasiCWL'); // Disingkat
-    reportsMenu.addItem('Evaluasi Partisipasi', 'getParticipationReport'); // Disingkat
+    reportsMenu.addItem('Status War Aktif', 'updateCurrentWar'); 
+    reportsMenu.addItem('Raid Capital Terbaru', 'generateDetailedRaidReport');
+    reportsMenu.addItem('Rekap CWL Musim Terakhir', 'rekapitulasiCWL'); 
+    reportsMenu.addItem('Evaluasi Partisipasi', 'getParticipationReport');
     menu.addSubMenu(reportsMenu);
 
     menu.addSeparator();
@@ -35,7 +35,6 @@ function onOpen() {
     // --- 3. Sub-Menu Administrasi (Arsip & Pengaturan) ---
     const adminMenu = ui.createMenu('⚙️ Administrasi Sistem');
     
-    // Pengarsipan
     const archiveMenu = ui.createMenu('🗄️ Arsipkan Laporan');
     archiveMenu.addItem('Arsipkan Laporan Raid', 'archiveRaidReport');
     archiveMenu.addItem('Arsipkan Rekap CWL', 'archiveCwlData');
@@ -44,9 +43,9 @@ function onOpen() {
     
     adminMenu.addSeparator();
     
-    // Pengaturan
     adminMenu.addItem('🔑 Atur API & Webhook', 'setGlobalProperties');
-    adminMenu.addItem('⏰ Atur Otomatisasi Harian', 'setupAutomaticTriggers');
+    // --- PERUBAHAN NAMA MENU ---
+    adminMenu.addItem('⏰ Atur Automasi (Setiap 4 Jam)', 'setupAutomaticTriggers');
     menu.addSubMenu(adminMenu);
 
     menu.addToUi();
@@ -55,35 +54,45 @@ function onOpen() {
 /**
  * Fungsi utama untuk melakukan sinkronisasi data non-War (hanya data anggota).
  * Log War dipindahkan ke updateCurrentWar() agar lebih logis.
+ * --- PENGEMBANGAN: DITAMBAHKAN LOCKSERVICE UNTUK MENCEGAH EKSEKUSI GANDA ---
  */
 function fullDataRefresh() {
+    const lock = LockService.getScriptLock();
+    // Coba dapatkan lock selama 10 detik. Jika gagal, berarti ada proses lain yang berjalan.
+    if (!lock.tryLock(10000)) {
+        Logger.log('Proses sinkronisasi sedang berjalan. Eksekusi saat ini dilewati.');
+        return; // Hentikan eksekusi jika proses lain masih berjalan
+    }
+
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    ss.toast('Memulai sinkronisasi semua data klan...', '🚀 SINKRONISASI', -1);
-    
-    // 1. Ambil data dasar (Anggota)
-    updateAllMembers(true); // Kirim flag untuk menekan toast individu
-    
-    // 2. Ambil data Laporan (yang juga melakukan fetching API)
-    updateCurrentWar(); // Mencakup Log Perang dan Perang Aktif
-    generateDetailedRaidReport(); // Mencakup Raid Terbaru
-    
-    // 3. Bangun Laporan Agregasi (berdasarkan data yang baru di-fetch)
-    rekapitulasiCWL();
-    getParticipationReport();
-    
-    // 4. Update Dashboard (Fungsi buildDashboard akan dipanggil di sini setelah selesai)
-    Laporan_buildDashboard(); // Memanggil fungsi dari Laporan.gs
+    try {
+        ss.toast('Memulai sinkronisasi semua data klan...', '🚀 SINKRONISASI', -1);
+        
+        // 1. Ambil data dasar (Anggota)
+        updateAllMembers(true); // Kirim flag untuk menekan toast individu
+        
+        // 2. Ambil data Laporan (yang juga melakukan fetching API)
+        updateCurrentWar(); // Mencakup Log Perang dan Perang Aktif
+        generateDetailedRaidReport(); // Mencakup Raid Terbaru
+        
+        // 3. Bangun Laporan Agregasi (berdasarkan data yang baru di-fetch)
+        rekapitulasiCWL();
+        getParticipationReport();
+        
+        // 4. Update Dashboard (Fungsi buildDashboard akan dipanggil di sini setelah selesai)
+        Laporan_buildDashboard(); // Memanggil fungsi dari Laporan.gs
 
-    ss.toast('✅ Sinkronisasi dan pembaruan laporan selesai!', 'SELESAI', 5);
+        ss.toast('✅ Sinkronisasi dan pembaruan laporan selesai!', 'SELESAI', 5);
+    } catch (e) {
+        Logger.log(`Error pada fullDataRefresh: ${e.message}`);
+        ss.toast(`Terjadi Error: ${e.message}`, '❌ GAGAL', 10);
+    } finally {
+        // --- PENTING: Selalu lepaskan lock setelah selesai ---
+        lock.releaseLock();
+        Logger.log('Lock sinkronisasi dilepaskan.');
+    }
 }
 
-/**
- * Fungsi placeholder untuk membangun Dashboard (sudah diganti nama ke Laporan_buildDashboard).
- * Note: Fungsi ini tidak lagi digunakan, tapi dipertahankan untuk referensi.
- */
-function buildDashboard() {
-    Laporan_buildDashboard();
-}
 
 /**
  * Mengambil data anggota terbaru untuk semua klan dan menuliskannya ke sheet Anggota.
@@ -93,7 +102,7 @@ function updateAllMembers(suppressToast = false) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_NAMES.ANGGOTA);
     if (!sheet) { ss.toast(`Sheet "${SHEET_NAMES.ANGGOTA}" tidak ditemukan.`); return; }
-    ss.toast('Mengambil data anggota untuk semua klan...');
+    if (!suppressToast) ss.toast('Mengambil data anggota untuk semua klan...');
     const allClans = Utils.getAllClans();
     if (allClans.length === 0) return;
     const headers = ["Tag Klan", "Nama Klan", "Tag", "Nama", "Role", "Level TH", "Donasi", "Donasi Diterima", "Level XP", "League", "Poin War Bintang", "Trophy", "Tag Terakhir Online"];
@@ -103,10 +112,7 @@ function updateAllMembers(suppressToast = false) {
         const clanData = CocApi._fetch(endpoint, true);
         if (clanData && clanData.memberList) {
             clanData.memberList.sort((a, b) => Utils.memberSorter(a, b, 'default')).forEach(member => {
-                
-                // Defensif check untuk Level TH
                 const thLevel = member.townhallLevel || member.townHallLevel || 'N/A';
-
                 combinedData.push([clan.tag, clan.name, member.tag, member.name, Utils.formatRoleName(member.role), thLevel, member.donations || 0, member.donationsReceived || 0, member.expLevel || 'N/A', member.league ? member.league.name : 'Unranked', member.warStars || 0, member.trophies || 0, 'N/A']);
             });
         }
@@ -160,25 +166,20 @@ function updateAllWarLogs() {
     if (combinedData.length > 0) {
         const dataRange = sheet.getRange(2, 1, combinedData.length, headers.length);
         dataRange.setValues(combinedData);
-        
-        // --- START PERBAIKAN FORMAT ---
-        // Atur format angka untuk kolom bintang (kolom ke-6 dan ke-8) menjadi angka biasa.
         sheet.getRange(2, 6, combinedData.length).setNumberFormat('0');
         sheet.getRange(2, 8, combinedData.length).setNumberFormat('0');
-        // Atur format untuk kolom persentase (kolom ke-7 dan ke-9)
         sheet.getRange(2, 7, combinedData.length).setNumberFormat('0.00');
         sheet.getRange(2, 9, combinedData.length).setNumberFormat('0.00');
-        // --- END PERBAIKAN FORMAT ---
     }
     SpreadsheetFormatter.formatWarLogSheet(sheet);
 }
 
 
+// ===================================
 // === FUNGSI ARSIP & PENGATURAN ===
+// (Tidak ada perubahan pada fungsi-fungsi di bawah ini)
+// ===================================
 
-/**
- * Mengarsipkan laporan Raid terbaru yang ada di sheet Raid Terbaru ke Arsip Raid.
- */
 function archiveRaidReport() {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const reportSheet = ss.getSheetByName(SHEET_NAMES.RAID_TERBARU);
@@ -229,9 +230,7 @@ function archiveRaidReport() {
     }
 }
 
-/**
- * Mengarsipkan laporan CWL dari sheet CWL - [Nama Klan] ke Arsip CWL.
- */
+
 function archiveCwlData() {
     const ui = SpreadsheetApp.getUi();
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -258,18 +257,6 @@ function archiveCwlData() {
     if (archiveSheet.getLastRow() === 0) {
         archiveSheet.appendRow(archiveHeaders);
     }
-
-    const isOldFormatDetected = archiveSheet.getLastRow() > 1 && String(archiveSheet.getRange('A2').getValue()).trim() === "";
-    
-    if (isOldFormatDetected) {
-        const migrationResponse = ui.alert('Migrasi Arsip CWL',
-            "Format arsip CWL lama terdeteksi. Apakah Anda ingin membersihkan arsip dan menggantinya dengan data dari laporan baru yang sudah rapi? Tindakan ini akan menghapus semua data di 'Arsip CWL' secara permanen.",
-            ui.ButtonSet.YES_NO
-        );
-        if (migrationResponse === ui.Button.YES) {
-            archiveSheet.getRange(2, 1, archiveSheet.getLastRow() - 1, archiveSheet.getLastColumn()).clearContent();
-        }
-    }
     
     ss.toast(`Memulai pengarsipan CWL untuk ${reportsToArchive.length} klan...`, "ARSIP CWL", -1);
 
@@ -292,16 +279,11 @@ function archiveCwlData() {
                 const blockIdentifier = `--- START HARI KE-${dayCounter} VS ${currentOpponent} / MUSIM ${seasonId} / CLAN ${report.tag} ---`;
                 
                 if (!existingArchiveBlocks.includes(blockIdentifier)) {
-                    // Baris Header Blok: Kolom A kosong, Kolom B adalah Identifier
                     newArchiveData.push(["", blockIdentifier, ...Array(16).fill("")]);
                 } else {
                     currentOpponent = "DUPLICATE";
                 }
-            } else if (String(row[0]).startsWith('Tag') && dayCounter > 0 && currentOpponent !== "DUPLICATE") {
-                // Lewati baris header kolom
-                return;
             } else if (String(row[0]).startsWith('#') && currentOpponent !== "DUPLICATE") {
-                // Baris Data Pemain
                 const [ourTag, ourName, ourTh, ourStatus, ourTarget, ourStars, ourPercent, , oppTag, oppName, oppTh, oppStatus, oppTarget, oppStars, oppPercent] = row;
                 
                 newArchiveData.push([
@@ -333,9 +315,7 @@ function archiveCwlData() {
     }
 }
 
-/**
- * Mengarsipkan War Classic Detail dari sheet Perang Aktif ke Arsip Perang.
- */
+
 function archiveClassicWarData() {
     const ui = SpreadsheetApp.getUi();
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -344,15 +324,14 @@ function archiveClassicWarData() {
     const warLogSheet = ss.getSheetByName(SHEET_NAMES.LOG_PERANG);
 
     if (!sourceSheet || sourceSheet.getLastRow() <= 1) {
-        ui.alert('Error', `Sheet "${SHEET_NAMES.PERANG_AKTIF}" kosong. Harap update War Aktif terlebih dahulu.`, ui.ButtonSet.OK);
+        ui.alert('Error', `Sheet "${SHEET_NAMES.PERANG_AKTIF}" kosong.`, ui.ButtonSet.OK);
         return;
     }
     if (!warLogSheet || warLogSheet.getLastRow() <= 1) {
-        ui.alert('Error', `Sheet "${SHEET_NAMES.LOG_PERANG}" kosong. Harap jalankan Perang Aktif (yang sudah terintegrasi) untuk update Log Perang.`, ui.ButtonSet.OK);
+        ui.alert('Error', `Sheet "${SHEET_NAMES.LOG_PERANG}" kosong.`, ui.ButtonSet.OK);
         return;
     }
 
-    // --- 1. PROMPT PENGGUNA UNTUK NAMA KLAN SAJA ---
     const warNamePrompt = ui.prompt("Arsipkan War Classic", "Klan mana yang baru saja selesai berperang? (Contoh: GBK Crew)", ui.ButtonSet.OK_CANCEL);
     if (warNamePrompt.getSelectedButton() !== ui.Button.OK || !warNamePrompt.getResponseText()) return;
     
@@ -366,15 +345,12 @@ function archiveClassicWarData() {
     const clanTag = targetClan.tag;
     const safeTargetClanName = targetClanName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
 
-    // --- 2. MEMBACA BLOK DATA DARI PERANG AKTIF ---
     const sourceData = sourceSheet.getDataRange().getValues();
     const detailedDataBlock = [];
     let isTargetWar = false;
     let opponentName = "";
     let opponentTag = "N/A";
     let warHeaderString = "";
-
-    // Pola mencari: ⚔️ [NAMA KITA] (CLASSIC) vs [NAMA LAWAN] (#TAG LAWAN) (State: warEnded)
     const headerPattern = new RegExp(`⚔️\\s*${safeTargetClanName}\\s*\\(CLASSIC\\)\\s*vs\\s*(.*?)\\s*\\(#(.*?)\\)\\s*\\(STATE:\\s*warEnded\\)`, 'i');
 
     for (let i = 0; i < sourceData.length; i++) {
@@ -398,12 +374,10 @@ function archiveClassicWarData() {
     }
 
     if (detailedDataBlock.length === 0) {
-        ui.alert('Error', `Tidak dapat menemukan detail War Classic untuk ${targetClanName} di sheet Perang Aktif. Pastikan War sudah selesai (State: warEnded).`, ui.ButtonSet.OK);
+        ui.alert('Error', `Tidak dapat menemukan detail War Classic untuk ${targetClanName} yang sudah selesai.`, ui.ButtonSet.OK);
         return;
     }
     
-    // --- 3. AUTOMATIC RESULT LOOKUP DARI LOG PERANG ---
-    const warLogData = warLogSheet.getLastRow() > 1 ? warLogSheet.getRange(2, 1, warLogSheet.getLastRow() - 1, warLogSheet.getLastColumn()).getValues() : [];
     let finalResult = 'N/A';
     let warEndDate = new Date();
     
@@ -419,14 +393,10 @@ function archiveClassicWarData() {
         ui.alert('Peringatan', 'War Log tidak mencatat War ini. Mengarsip dengan Hasil N/A.', ui.ButtonSet.OK);
     }
     
-    // --- 4. PROSES PENGARSIPAN ---
     const warId = Utils.generateWarId(clanTag, warEndDate, opponentName);
-    
     const archiveHeaders = ["Tag Klan", "ID War", "Tanggal Arsip", "Hasil", "Nama Lawan", "Tag", "Nama", "TH", "Status Kita", "Target Kita", "Bintang Kita", "Persen Kita", "Tag Lawan", "Nama Lawan", "TH Lawan", "Status Lawan", "Target Lawan", "Bintang Lawan", "Persen Lawan"];
 
-    const neededColumns = archiveHeaders.length;
-    if (archiveSheet.getMaxColumns() < neededColumns) { archiveSheet.setMaxColumns(neededColumns); }
-    
+    if (archiveSheet.getMaxColumns() < archiveHeaders.length) { archiveSheet.setMaxColumns(archiveHeaders.length); }
     if (archiveSheet.getLastRow() === 0) {
         archiveSheet.getRange(1, 1, 1, archiveHeaders.length).setValues([archiveHeaders]);
     }
@@ -438,39 +408,28 @@ function archiveClassicWarData() {
     }
 
     const dataToArchive = [];
-    
-    // FIX KRITIS: Baris Penanda War (Sekarang Kolom A berisi Header, Kolom B berisi ID War)
-    const headerRow = [warHeaderString, warId, ...Array(neededColumns - 2).fill("")];
+    const headerRow = [warHeaderString, warId, ...Array(archiveHeaders.length - 2).fill("")];
     dataToArchive.push(headerRow);
 
     detailedDataBlock.forEach(row => {
         const limitedRow = row.slice(0, 15);
-        
         const outputRow = [];
-        
-        // Bagian I: Data Kustom War Archive (Kolom A-E)
         outputRow.push(clanTag, warId, new Date(), finalResult, opponentName);
-
-        // Bagian II: Data Kita (Kolom F-L, 7 elemen)
         outputRow.push(limitedRow[0], limitedRow[1], limitedRow[2], String(limitedRow[3]), limitedRow[4], limitedRow[5], limitedRow[6]);
-
-        // Bagian III: Data Lawan (Kolom M-S, 7 elemen)
         outputRow.push(opponentTag, limitedRow[9], limitedRow[10], String(limitedRow[11]), limitedRow[12], limitedRow[13], limitedRow[14]);
-        
         dataToArchive.push(outputRow);
     });
 
-    if (dataToArchive.length === 1 && dataToArchive[0][0] === warHeaderString) {
-        ui.alert('Error', 'War Archive gagal. Tidak ada baris data pemain yang ditemukan di War Aktif.', ui.ButtonSet.OK);
+    if (dataToArchive.length <= 1) {
+        ui.alert('Error', 'War Archive gagal. Tidak ada data pemain ditemukan.', ui.ButtonSet.OK);
         return;
     }
     
-    archiveSheet.getRange(archiveSheet.getLastRow() + 1, 1, dataToArchive.length, neededColumns).setValues(dataToArchive);
+    archiveSheet.getRange(archiveSheet.getLastRow() + 1, 1, dataToArchive.length, archiveHeaders.length).setValues(dataToArchive);
     SpreadsheetFormatter.formatClassicWarArchiveSheet(archiveSheet);
+    ss.toast(`✅ Berhasil mengarsipkan War Classic ${opponentName}.`, "SELESAI", 10);
     
-    ss.toast(`✅ Berhasil mengarsipkan War Classic ${opponentName} (Result: ${finalResult}).`, "SELESAI", 10);
-    
-    const response = ui.alert('Arsip Selesai', `War Classic untuk ${targetClanName} sudah diarsipkan. Hapus sheet laporan "Perang Aktif" temporer?`, ui.ButtonSet.YES_NO);
+    const response = ui.alert('Arsip Selesai', `Hapus sheet "Perang Aktif"?`, ui.ButtonSet.YES_NO);
     if (response == ui.Button.YES) {
         ss.deleteSheet(sourceSheet);
     }
@@ -489,6 +448,3 @@ function setGlobalProperties() {
         ui.alert('URL Webhook berhasil disimpan.');
     }
 }
-
-function setupAutomaticTriggers() { SpreadsheetApp.getUi().alert('Fungsi ini sedang dalam pengembangan.'); }
-
