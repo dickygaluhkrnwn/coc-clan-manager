@@ -116,8 +116,6 @@ function updateAllMembers(suppressToast = false) {
     if (combinedData.length > 0) { sheet.getRange(2, 1, combinedData.length, headers.length).setValues(combinedData); }
     SpreadsheetFormatter.formatMemberSheet(sheet);
     
-    // Tambahkan toast notifikasi selesai untuk fungsi ini
-    // Memperbaiki TypeError: ss.getUi() dengan menggunakan suppressToast
     if (!suppressToast) {
         ss.toast('✅ Data anggota selesai diperbarui!', 'SELESAI', 5);
     }
@@ -134,7 +132,6 @@ function updateAllWarLogs() {
     ss.toast('Mengambil log perang untuk semua klan...');
     const allClans = Utils.getAllClans();
     if (allClans.length === 0) return;
-    // Tambahkan 1 kolom untuk ID War
     const headers = ["Tag Klan", "Nama Klan", "ID War", "Hasil", "Ukuran Tim", "Bintang Kita", "Persen Kita", "Bintang Lawan", "Persen Lawan", "Nama Lawan", "Tanggal Selesai"];
     const combinedData = [];
     allClans.forEach(clan => {
@@ -143,24 +140,36 @@ function updateAllWarLogs() {
         if (warLogData && warLogData.items) {
             warLogData.items.forEach(war => {
                 if (war.clan && war.opponent && war.endTime) {
-                    if (war.teamSize && war.teamSize * 3 < (parseInt(war.clan.stars) || 0)) return; 
+                    if (war.teamSize && war.teamSize * 3 < (parseInt(war.clan.stars) || 0)) return;
                     const endDate = Utils.cocDateToJsDate(war.endTime);
-                    const warId = Utils.generateWarId(clan.tag, endDate, war.opponent.name); // Generate ID War
+                    const warId = Utils.generateWarId(clan.tag, endDate, war.opponent.name);
                     combinedData.push([
-                        clan.tag, clan.name, warId, war.result, war.teamSize, 
-                        parseInt(war.clan.stars) || 0, war.clan.destructionPercentage, 
-                        parseInt(war.opponent.stars) || 0, war.opponent.destructionPercentage, 
+                        clan.tag, clan.name, warId, war.result, war.teamSize,
+                        parseInt(war.clan.stars) || 0, war.clan.destructionPercentage,
+                        parseInt(war.opponent.stars) || 0, war.opponent.destructionPercentage,
                         war.opponent.name, endDate
                     ]);
                 }
             });
         }
     });
-    // Sorting: Tanggal Selesai ada di index 10
+    
     combinedData.sort((a, b) => b[10] - a[10]);
     sheet.clear();
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    if (combinedData.length > 0) { sheet.getRange(2, 1, combinedData.length, headers.length).setValues(combinedData); }
+    if (combinedData.length > 0) {
+        const dataRange = sheet.getRange(2, 1, combinedData.length, headers.length);
+        dataRange.setValues(combinedData);
+        
+        // --- START PERBAIKAN FORMAT ---
+        // Atur format angka untuk kolom bintang (kolom ke-6 dan ke-8) menjadi angka biasa.
+        sheet.getRange(2, 6, combinedData.length).setNumberFormat('0');
+        sheet.getRange(2, 8, combinedData.length).setNumberFormat('0');
+        // Atur format untuk kolom persentase (kolom ke-7 dan ke-9)
+        sheet.getRange(2, 7, combinedData.length).setNumberFormat('0.00');
+        sheet.getRange(2, 9, combinedData.length).setNumberFormat('0.00');
+        // --- END PERBAIKAN FORMAT ---
+    }
     SpreadsheetFormatter.formatWarLogSheet(sheet);
 }
 
@@ -195,7 +204,7 @@ function archiveRaidReport() {
             const dateMatch = row[0].match(/\(([^)]+)\)/);
             if (clanNameMatch && dateMatch) {
                 const clanName = clanNameMatch[1].trim();
-                currentClan = allClans.find(c => c.name.toUpperCase() === clanName.toUpperCase()); 
+                currentClan = allClans.find(c => c.name.toUpperCase() === clanName.toUpperCase());
                 raidDate = dateMatch[1];
             }
         } else if (currentClan && typeof row[0] === 'number') {
@@ -203,10 +212,10 @@ function archiveRaidReport() {
             archiveData.push([currentClan.tag, currentClan.name, raidId, new Date(raidDate), row[2], row[1], row[3], row[4]]);
         }
     });
-    
+
     const existingRaidIds = archiveSheet.getLastRow() > 1 ? archiveSheet.getRange(2, 3, archiveSheet.getLastRow() - 1, 1).getValues().flat() : [];
     const newArchiveData = archiveData.filter(row => !existingRaidIds.includes(row[2]));
-    
+
     if (newArchiveData.length > 0) {
         archiveSheet.getRange(archiveSheet.getLastRow() + 1, 1, newArchiveData.length, headers.length).setValues(newArchiveData);
         SpreadsheetFormatter.formatRaidArchiveSheet(archiveSheet);
@@ -230,7 +239,7 @@ function archiveCwlData() {
     const allClans = Utils.getAllClans();
     const reportsToArchive = allClans
         .map(clan => ({ name: clan.name, tag: clan.tag, sheet: ss.getSheetByName(`CWL - ${clan.name}`) }))
-        .filter(report => report.sheet !== null && report.sheet.getLastRow() > 3); 
+        .filter(report => report.sheet !== null && report.sheet.getLastRow() > 3);
 
     if (reportsToArchive.length === 0) {
         ui.alert("Tidak ada Laporan CWL yang siap diarsipkan.");
@@ -253,7 +262,7 @@ function archiveCwlData() {
     const isOldFormatDetected = archiveSheet.getLastRow() > 1 && String(archiveSheet.getRange('A2').getValue()).trim() === "";
     
     if (isOldFormatDetected) {
-        const migrationResponse = ui.alert('Migrasi Arsip CWL', 
+        const migrationResponse = ui.alert('Migrasi Arsip CWL',
             "Format arsip CWL lama terdeteksi. Apakah Anda ingin membersihkan arsip dan menggantinya dengan data dari laporan baru yang sudah rapi? Tindakan ini akan menghapus semua data di 'Arsip CWL' secara permanen.",
             ui.ButtonSet.YES_NO
         );
@@ -284,9 +293,9 @@ function archiveCwlData() {
                 
                 if (!existingArchiveBlocks.includes(blockIdentifier)) {
                     // Baris Header Blok: Kolom A kosong, Kolom B adalah Identifier
-                    newArchiveData.push(["", blockIdentifier, ...Array(16).fill("")]); 
+                    newArchiveData.push(["", blockIdentifier, ...Array(16).fill("")]);
                 } else {
-                    currentOpponent = "DUPLICATE"; 
+                    currentOpponent = "DUPLICATE";
                 }
             } else if (String(row[0]).startsWith('Tag') && dayCounter > 0 && currentOpponent !== "DUPLICATE") {
                 // Lewati baris header kolom
@@ -298,7 +307,7 @@ function archiveCwlData() {
                 newArchiveData.push([
                     report.tag, seasonId, new Date(),
                     ourTag, ourName, ourTh, String(ourStatus), ourTarget, ourStars, ourPercent,
-                    "", 
+                    "",
                     oppTag, oppName, oppTh, String(oppStatus), oppTarget, oppStars, oppPercent
                 ]);
                 totalRowsArchived++;
@@ -310,7 +319,7 @@ function archiveCwlData() {
         }
     });
 
-    SpreadsheetFormatter.formatCwlArchiveSheet(archiveSheet); 
+    SpreadsheetFormatter.formatCwlArchiveSheet(archiveSheet);
     
     if (totalRowsArchived > 0) {
         ss.toast(`✅ Berhasil mengarsipkan ${totalRowsArchived} baris data CWL baru dari ${reportsToArchive.length} klan.`, "SELESAI", 10);
@@ -330,7 +339,7 @@ function archiveCwlData() {
 function archiveClassicWarData() {
     const ui = SpreadsheetApp.getUi();
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sourceSheet = ss.getSheetByName(SHEET_NAMES.PERANG_AKTIF); 
+    const sourceSheet = ss.getSheetByName(SHEET_NAMES.PERANG_AKTIF);
     const archiveSheet = ss.getSheetByName(SHEET_NAMES.ARSIP_PERANG) || ss.insertSheet(SHEET_NAMES.ARSIP_PERANG);
     const warLogSheet = ss.getSheetByName(SHEET_NAMES.LOG_PERANG);
 
@@ -363,7 +372,7 @@ function archiveClassicWarData() {
     let isTargetWar = false;
     let opponentName = "";
     let opponentTag = "N/A";
-    let warHeaderString = ""; 
+    let warHeaderString = "";
 
     // Pola mencari: ⚔️ [NAMA KITA] (CLASSIC) vs [NAMA LAWAN] (#TAG LAWAN) (State: warEnded)
     const headerPattern = new RegExp(`⚔️\\s*${safeTargetClanName}\\s*\\(CLASSIC\\)\\s*vs\\s*(.*?)\\s*\\(#(.*?)\\)\\s*\\(STATE:\\s*warEnded\\)`, 'i');
@@ -374,16 +383,16 @@ function archiveClassicWarData() {
 
         if (rowString.match(headerPattern)) {
             const match = rowString.match(headerPattern);
-            opponentName = match && match[1] ? match[1].trim() : "Unknown Opponent"; 
-            opponentTag = match && match[2] ? `#${match[2].trim()}` : "N/A"; 
+            opponentName = match && match[1] ? match[1].trim() : "Unknown Opponent";
+            opponentTag = match && match[2] ? `#${match[2].trim()}` : "N/A";
             isTargetWar = true;
-            warHeaderString = `⚔️ ${targetClanName} (${clanTag}) vs ${opponentName} (${opponentTag})`; 
+            warHeaderString = `⚔️ ${targetClanName} (${clanTag}) vs ${opponentName} (${opponentTag})`;
         } else if (isTargetWar) {
-            if (String(row[0]).startsWith('#')) { 
+            if (String(row[0]).startsWith('#')) {
                 detailedDataBlock.push(row);
             }
             if (row.every(cell => !cell) || rowString.startsWith('⚔️')) {
-                isTargetWar = false; 
+                isTargetWar = false;
             }
         }
     }
@@ -398,14 +407,14 @@ function archiveClassicWarData() {
     let finalResult = 'N/A';
     let warEndDate = new Date();
     
-    const matchedLogEntry = warLogSheet.getLastRow() > 1 ? warLogSheet.getRange(2, 1, warLogSheet.getLastRow() - 1, warLogSheet.getLastColumn()).getValues().find(row => 
-        String(row[0]) === clanTag && 
-        String(row[9]).toUpperCase().includes(opponentName.toUpperCase()) 
+    const matchedLogEntry = warLogSheet.getLastRow() > 1 ? warLogSheet.getRange(2, 1, warLogSheet.getLastRow() - 1, warLogSheet.getLastColumn()).getValues().find(row =>
+        String(row[0]) === clanTag &&
+        String(row[9]).toUpperCase().includes(opponentName.toUpperCase())
     ) : null;
     
     if (matchedLogEntry) {
         finalResult = String(matchedLogEntry[3]).toLowerCase();
-        warEndDate = matchedLogEntry[10]; 
+        warEndDate = matchedLogEntry[10];
     } else {
         ui.alert('Peringatan', 'War Log tidak mencatat War ini. Mengarsip dengan Hasil N/A.', ui.ButtonSet.OK);
     }
@@ -416,7 +425,7 @@ function archiveClassicWarData() {
     const archiveHeaders = ["Tag Klan", "ID War", "Tanggal Arsip", "Hasil", "Nama Lawan", "Tag", "Nama", "TH", "Status Kita", "Target Kita", "Bintang Kita", "Persen Kita", "Tag Lawan", "Nama Lawan", "TH Lawan", "Status Lawan", "Target Lawan", "Bintang Lawan", "Persen Lawan"];
 
     const neededColumns = archiveHeaders.length;
-    if (archiveSheet.getMaxColumns() < neededColumns) { archiveSheet.setMaxColumns(neededColumns); } 
+    if (archiveSheet.getMaxColumns() < neededColumns) { archiveSheet.setMaxColumns(neededColumns); }
     
     if (archiveSheet.getLastRow() === 0) {
         archiveSheet.getRange(1, 1, 1, archiveHeaders.length).setValues([archiveHeaders]);
@@ -432,7 +441,7 @@ function archiveClassicWarData() {
     
     // FIX KRITIS: Baris Penanda War (Sekarang Kolom A berisi Header, Kolom B berisi ID War)
     const headerRow = [warHeaderString, warId, ...Array(neededColumns - 2).fill("")];
-    dataToArchive.push(headerRow); 
+    dataToArchive.push(headerRow);
 
     detailedDataBlock.forEach(row => {
         const limitedRow = row.slice(0, 15);
@@ -440,7 +449,7 @@ function archiveClassicWarData() {
         const outputRow = [];
         
         // Bagian I: Data Kustom War Archive (Kolom A-E)
-        outputRow.push(clanTag, warId, new Date(), finalResult, opponentName); 
+        outputRow.push(clanTag, warId, new Date(), finalResult, opponentName);
 
         // Bagian II: Data Kita (Kolom F-L, 7 elemen)
         outputRow.push(limitedRow[0], limitedRow[1], limitedRow[2], String(limitedRow[3]), limitedRow[4], limitedRow[5], limitedRow[6]);
@@ -457,7 +466,7 @@ function archiveClassicWarData() {
     }
     
     archiveSheet.getRange(archiveSheet.getLastRow() + 1, 1, dataToArchive.length, neededColumns).setValues(dataToArchive);
-    SpreadsheetFormatter.formatClassicWarArchiveSheet(archiveSheet); 
+    SpreadsheetFormatter.formatClassicWarArchiveSheet(archiveSheet);
     
     ss.toast(`✅ Berhasil mengarsipkan War Classic ${opponentName} (Result: ${finalResult}).`, "SELESAI", 10);
     
@@ -482,3 +491,4 @@ function setGlobalProperties() {
 }
 
 function setupAutomaticTriggers() { SpreadsheetApp.getUi().alert('Fungsi ini sedang dalam pengembangan.'); }
+
